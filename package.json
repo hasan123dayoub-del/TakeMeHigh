@@ -16,13 +16,13 @@
     "lint": "npm run lint -w @travelos/api && npm run lint -w @travelos/web",
     "test": "npm run test -w @travelos/api",
     "test:e2e": "npm run test:e2e -w @travelos/api",
-    "db:create": "npm run db:create -w @travelos/api",
-    "db:migrate": "npm run migration:run -w @travelos/api",
-    "db:revert": "npm run migration:revert -w @travelos/api",
-    "db:seed": "npm run seed -w @travelos/api",
+    "db:migrate": "npm run db:migrate -w @travelos/api",
+    "db:seed": "npm run db:seed -w @travelos/api",
     "db:reset": "npm run db:reset -w @travelos/api",
-    "db:setup": "npm run db:create && npm run db:migrate && npm run db:seed",
-    "format": "prettier --write \"apps/**/src/**/*.{ts,tsx}\" \"packages/**/src/**/*.ts\""
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "format": "prettier --write \"apps/**/src/**/*.{ts,tsx}\" \"packages/**/src/**/*.ts\"",
+    "db:migrate:dev": "npm run db:migrate:dev -w @travelos/api",
+    "db:studio": "npm run db:studio -w @travelos/api"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
@@ -31,5 +31,13 @@
   "workspaces": [
     "packages/*",
     "apps/*"
-  ]
+  ],
+  "allowScripts": {
+    "@prisma/engines@7.10.1": true,
+    "prisma@7.10.1": true,
+    "esbuild@0.28.2": true,
+    "bcrypt@6.0.0": true,
+    "@scarf/scarf": false,
+    "@parcel/watcher": false
+  }
 }

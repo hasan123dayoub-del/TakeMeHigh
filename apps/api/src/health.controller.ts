@@ -1,17 +1,17 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { DataSource } from 'typeorm';
 import { Public } from './common/decorators';
+import { PrismaService } from './prisma/prisma.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly db: DataSource) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Public()
   @Get()
   async check() {
-    await this.db.query('SELECT 1');
+    await this.prisma.$queryRaw`SELECT 1`;
     return { status: 'ok', database: 'up', time: new Date().toISOString() };
   }
 }

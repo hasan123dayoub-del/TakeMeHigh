@@ -1,15 +1,19 @@
 import Decimal from 'decimal.js';
-import { ValueTransformer } from 'typeorm';
 
-Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
+/**
+ * All money maths uses decimal.js (never JS floats). Values cross the API as strings with 2 decimals
+ * and are stored as NUMERIC(14,2).
+ */
+Decimal.set({ precision: 30, rounding: Decimal.ROUND_HALF_UP });
 
-/** Money is stored as DECIMAL(12,2) and handled as a string in JS, never as a float. */
-export const moneyTransformer: ValueTransformer = {
-  to: (value?: string | number | null) =>
-    value === undefined || value === null ? value : new Decimal(value).toFixed(2),
-  from: (value: string | null) => (value === null ? null : new Decimal(value).toFixed(2)),
-};
+export type MoneyInput = Decimal.Value | { toString(): string };
 
-export const money = (value: Decimal.Value) => new Decimal(value);
-export const toMoney = (value: Decimal.Value) => new Decimal(value).toFixed(2);
+export const D = (v: MoneyInput | null | undefined) => new Decimal(v == null ? 0 : v.toString());
+export const toMoney = (v: MoneyInput | null | undefined) => D(v).toFixed(2);
+
+/** Selling price = cost × (1 + profit% / 100), rounded to 2 decimals. */
+export function sellingPrice(cost: MoneyInput, profitPercent: MoneyInput): Decimal {
+  return D(cost).mul(D(1).add(D(profitPercent).div(100))).toDecimalPlaces(2);
+}
+
 export { Decimal };
