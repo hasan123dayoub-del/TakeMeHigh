@@ -17,6 +17,11 @@ import { BranchesModule } from './branches/branches.module';
 import { EmployeesModule } from './employees/employees.module';
 import { RolesModule } from './roles/roles.module';
 import { PlatformModule } from './platform/platform.module';
+import { ToursModule } from './tours/tours.module';
+import { TripsModule } from './trips/trips.controller';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { CustomersModule } from './customers/customers.module';
+import { BookingsModule } from './bookings/bookings.controller';
 
 @Module({
   imports: [
@@ -35,6 +40,11 @@ import { PlatformModule } from './platform/platform.module';
     BranchesModule,
     EmployeesModule,
     RolesModule,
+    ToursModule,
+    TripsModule,
+    SuppliersModule,
+    CustomersModule,
+    BookingsModule,
   ],
   controllers: [HealthController],
   providers: [

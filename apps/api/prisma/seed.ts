@@ -269,7 +269,7 @@ async function main() {
       await prisma.customer.create({
         data: {
           officeId: sham.office.id, fullName: `${FIRST[i % FIRST.length]} ${LAST[i % LAST.length]}`,
-          phone: `+963 9${String(30000000 + i * 1234567).slice(0, 8)}`, nationalId: String(1000000000 + i * 7919),
+          phone: `+9639${String(30000000 + i * 1234567).slice(0, 8)}`, nationalId: String(1000000000 + i * 7919),
           dateOfBirth: day(-365 * (22 + (i % 30))), address: i % 3 ? 'دمشق' : 'حلب',
           notes: i % 5 === 0 ? 'زبون دائم، يفضل المقاعد الأمامية.' : null,
         },
