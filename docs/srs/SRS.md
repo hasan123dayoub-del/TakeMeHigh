@@ -1,227 +1,149 @@
-# Software Requirements Specification: TravelOS
+# Software Requirements Specification: Safarni (سفرني)
 
 | | |
 |---|---|
-| Product | TravelOS, Travel Agency Operations System |
-| Version | 0.1 (hackathon release) |
-| Event | ByteForFuture × AFK Hackathon 2026 |
-| Status | Implemented; requirements marked ✅ are implemented and verified |
+| Product | Safarni, a multi-tenant SaaS for managing tourism offices |
+| Version | 0.2 (hackathon release) |
+| Sources | Official brief from the organisers; Master Project Context; owner decisions (2 default roles, showcase landing, supplier dues) |
+| Status legend | ✅ implemented and verified · 🟡 foundation only · ⏳ open decision (see [OPEN-DECISIONS](../OPEN-DECISIONS.md)) |
 
 ## 1. Introduction
 
-### 1.1 Purpose
-This document specifies the requirements of TravelOS. It is written for the development team, the hackathon judges and future maintainers.
-
-### 1.2 Scope
-TravelOS is an integrated web system that runs a travel agency from the inside. It covers:
-- programs and offers
-- prices
-- bookings
+### 1.1 Purpose and scope
+Safarni is an integrated web system that runs a tourism office from the inside. It covers:
+- programs (tours) and offers
+- prices built from supplier costs plus profit
+- bookings with individual passenger records
 - customers
-- suppliers (hotels and transport)
+- suppliers (hotels, transport, restaurants) and the office's dues to them
 - available seats
 
-All of this lives in one dashboard. Each agency can also have an optional public page where it publishes its ready trips so travellers can book directly.
+All of this is in one dashboard. Each office may enable a public page, and appear on the Safarni showcase, where travellers browse its ready trips and contact it on WhatsApp.
 
-**Out of scope:** TravelOS is not a central travel marketplace. Its goal is to replace notebooks, WhatsApp and Word files with a daily operating tool for each agency. Online card payment, airline and hotel inventory integrations, and multi-currency accounting are out of scope for this release (see §8 Roadmap).
+**Not in scope:**
+- a central marketplace, online checkout, customer accounts, or a mobile app
+- full accounting (salaries, general expenses)
 
-### 1.3 Definitions
+### 1.2 Definitions
 | Term | Meaning |
 |---|---|
-| Agency (tenant) | A travel agency using TravelOS; all its data is isolated from other agencies |
-| Trip (program) | A dated, priced travel package with a fixed capacity |
-| Offer | A time-limited reduced adult price on a trip |
-| Booking | A reservation of seats on a trip for a customer |
-| Seats booked | Seats held by Pending, Confirmed and Completed bookings |
-| Deposit % | Share of the total that confirms a booking (agency setting, default 30%) |
-| Balance due | Deposit and remaining balance due N days before departure (agency setting, default 7) |
+| Office | A tenant (tourism office). Its data is fully isolated from other offices. |
+| Branch | An organisational unit inside an office. Every employee belongs to exactly one branch. |
+| Tour | A reusable program (itinerary, terms, images). |
+| Trip | A scheduled run of a Tour in one branch, with dates, a type (VIP or Standard), a currency, capacity and prices. |
+| Service | A hotel, transport or restaurant supplier attached to a trip, with its cost per person and profit %. |
+| Seats taken | The passengers of **CONFIRMED** bookings only. |
 
-### 1.4 References
-- [Architecture](../architecture/README.md)
-- [Database](../database/README.md)
-- [API contract](../api/README.md)
-- [Use cases](../use-cases/README.md)
-- [Design system](../design/design-system.md)
-
-## 2. Overall description
-
-### 2.1 Product perspective
-TravelOS is a stand-alone multi-tenant web application:
-- a browser client (Next.js),
-- a REST API (NestJS),
-- a relational database (MariaDB/MySQL).
-
-The public agency page is part of the same web app and uses a restricted set of public endpoints.
-
-### 2.2 User classes
-| Class | Permissions (summary) |
+### 1.3 Users
+| Class | Description |
 |---|---|
-| Owner | Everything, including team management and owner accounts |
-| Administrator | Everything except managing owners |
-| Operations Manager | Trips, offers, itineraries, suppliers, bookings, customers, reports |
-| Booking Agent | Trips (read), bookings, customers, record payments |
-| Accountant | Read operations, payments, refunds, expenses, finance, reports |
-| Traveller | Public page only, no account |
+| Platform admin | Safarni staff: onboards, activates and deactivates offices |
+| Admin (default role, office scope) | Manages the whole office: all branches, staff, roles, prices, decisions, refunds, profit |
+| Reception (default role, branch scope) | Front desk of one branch: customers, bookings, passengers, cash payments, operational reports |
+| Custom roles | Offices can compose roles from the permission catalogue (e.g. trip supervisor) |
+| Visitor | Browses the public pages; contacts the office on WhatsApp |
 
-### 2.3 Operating environment
-- **Server:**
-  - Node.js 22+
-  - MariaDB 10.4 (XAMPP) or MySQL 8
-  - Windows (the team's environment); Linux and macOS are compatible
-- **Client:**
-  - current Chrome, Edge, Firefox or Safari on desktop, tablet or phone (from 375 px wide)
-  - light and dark themes
+### 1.4 Environment and constraints
+- **Software:** Node.js 22+, PostgreSQL 16+ (developed on 18), modern browsers from 375 px wide.
+- **Languages:** Arabic (RTL, default) and English (LTR).
+- **Market:** initially Syria (SYP and USD), with the architecture ready for other countries and currencies.
 
-### 2.4 Constraints
-- 24-hour build by a team of 5, so a modular monolith was chosen.
-- Runs locally from XAMPP with no Docker requirement.
-- No source code is published or deployed during the event.
+## 2. Functional requirements
 
-### 2.5 Assumptions
-- One currency per agency.
-- Staff are trusted within their role.
-- Travellers' booking requests are confirmed by the agency by phone or WhatsApp.
+V = verification. **T** = automated e2e test (`apps/api/test`). **D** = demonstrated in the UI. **R** = code review.
 
-## 3. Functional requirements
-
-Priority: **M** = must, **S** = should. Verification: **T** = automated test, **D** = demonstrated in the UI, **R** = code review.
-
-### 3.1 Authentication and authorisation
-| ID | Requirement | Pri | Status | Verify |
-|---|---|---|---|---|
-| FR-AUTH-1 | Staff sign in with email and password and receive a JWT valid for 8 hours. | M | ✅ | T |
-| FR-AUTH-2 | Passwords are stored as bcrypt hashes and never returned by the API. | M | ✅ | R |
-| FR-AUTH-3 | Every endpoint except login, health and the public page requires a valid token. | M | ✅ | T |
-| FR-AUTH-4 | Every action is authorised against the role permission matrix; unauthorised actions return 403. | M | ✅ | T |
-| FR-AUTH-5 | All data access is scoped to the agency in the token; other agencies' records return 404. | M | ✅ | T |
-| FR-AUTH-6 | The UI hides navigation and actions the role cannot use. | S | ✅ | D |
-
-### 3.2 Dashboard
-| ID | Requirement | Pri | Status |
+### 2.1 Identity, tenancy, permissions
+| ID | Requirement | Status | V |
 |---|---|---|---|
-| FR-DASH-1 | Show total and active trips, total and pending bookings, available seats, revenue (this month against last), outstanding balance and overdue bookings. | M | ✅ |
-| FR-DASH-2 | Show upcoming departures with seats booked out of capacity. | M | ✅ |
-| FR-DASH-3 | Show revenue by month (12 months), the weekly booking trend and bookings by status. | S | ✅ |
-| FR-DASH-4 | Show recent activity from the audit log. | S | ✅ |
-| FR-DASH-5 | All figures come from live data; none are hard-coded. | M | ✅ |
+| FR-1 | Login with email and password. 15-minute access token plus a rotating refresh token. Logout revokes the session. Reusing an old refresh token revokes the whole session. | ✅ | T |
+| FR-2 | An office never accesses another office's data; other offices' ids answer 404. | ✅ | T |
+| FR-3 | A branch-scoped employee only sees and acts on their branch's trips, bookings and payments, and cannot book another branch's trip. | ✅ | T |
+| FR-4 | Roles are configurable per office from a permission catalogue. The default roles are Admin and Reception. Branch roles cannot hold office-wide permissions. The office always keeps an administrator. | ✅ | T |
+| FR-5 | The platform admin onboards an office (main branch, default roles, first admin) and can activate or deactivate it. | ✅ | T |
+| FR-6 | Employees are created in exactly one branch with one role. Changing their access ends their sessions. | ✅ | T |
 
-### 3.3 Trips, programs and offers
-| ID | Requirement | Pri | Status |
+### 2.2 Office, branches, currencies
+| ID | Requirement | Status | V |
 |---|---|---|---|
-| FR-TRIP-1 | Create, edit, list, filter (status, destination, upcoming/past) and search trips. | M | ✅ |
-| FR-TRIP-2 | A trip has a code, title, destination, departure and return dates, capacity, adult and child prices, cost per person, status, public flag, inclusions and exclusions. | M | ✅ |
-| FR-TRIP-3 | Maintain a day-by-day itinerary. | M | ✅ |
-| FR-TRIP-4 | Attach supplier services with quantity and unit cost; show the projected margin. | S | ✅ |
-| FR-TRIP-5 | Define an offer (price below the normal price, label, optional end date). The active offer applies automatically to new bookings and the public page. | M | ✅ |
-| FR-TRIP-6 | Capacity cannot be reduced below the seats already booked. | M | ✅ |
-| FR-TRIP-7 | A trip with bookings cannot be deleted; it can be cancelled. | M | ✅ |
-| FR-TRIP-8 | A trip becomes FULL automatically when no seats remain, and reopens when seats are released. | M | ✅ |
+| FR-7 | Office profile: WhatsApp number, map location, logo, brand colour, terms, default currency and language, public page on/off. | ✅ | T |
+| FR-8 | Branches can be created, updated and (de)activated with safeguards (main branch, active staff, active trips). | ✅ | T |
+| FR-9 | SYP and USD are supported, with each office's enabled set and default. Each trip uses one currency; its bookings and payments inherit it. No conversion. | ✅ | T |
 
-### 3.4 Bookings and seats
-| ID | Requirement | Pri | Status | Verify |
-|---|---|---|---|---|
-| FR-BOOK-1 | Create a booking for an existing or new customer with adults, children, optional discount, passengers and notes. | M | ✅ | T |
-| FR-BOOK-2 | Prices and totals are computed by the server from the trip (including offers), never from the client. | M | ✅ | T |
-| FR-BOOK-3 | **Seats are never oversold, including under simultaneous requests.** | M | ✅ | T (25 concurrent requests on 10 seats → 10 bookings) |
-| FR-BOOK-4 | A request larger than the seats left is rejected with the number of seats left. | M | ✅ | T |
-| FR-BOOK-5 | Bookings can be confirmed and cancelled. Cancellation releases seats and can include a refund in the same transaction. | M | ✅ | T |
-| FR-BOOK-6 | Each booking has a unique readable reference (TOS-YY-XXXXXX). | M | ✅ | T |
-| FR-BOOK-7 | List, filter (status, payment status, trip, customer, source) and search bookings. | M | ✅ | D |
-| FR-BOOK-8 | Generate a printable booking confirmation. | M | ✅ | D |
-| FR-BOOK-9 | Record the booking source (office, phone, WhatsApp, public page). | S | ✅ | R |
-
-### 3.5 Payments and finance
-| ID | Requirement | Pri | Status | Verify |
-|---|---|---|---|---|
-| FR-FIN-1 | Record payments (amount, method, reference, date) against a booking. | M | ✅ | T |
-| FR-FIN-2 | A payment cannot exceed the remaining balance; a refund cannot exceed the amount paid. | M | ✅ | T |
-| FR-FIN-3 | Reaching the agency's deposit % confirms a pending booking automatically. | S | ✅ | T |
-| FR-FIN-4 | Payment status is derived: Unpaid, Partial, Paid or Refunded. | M | ✅ | T |
-| FR-FIN-5 | Record, edit and delete expenses by category, optionally linked to a trip or supplier. | M | ✅ | D |
-| FR-FIN-6 | Show collected, refunded, net revenue, expenses, profit and outstanding totals. | M | ✅ | D |
-| FR-FIN-7 | All money uses exact decimal arithmetic. | M | ✅ | R, T |
-
-### 3.6 Customers
-| ID | Requirement | Pri | Status |
+### 2.3 Tours and trips
+| ID | Requirement | Status | V |
 |---|---|---|---|
-| FR-CUS-1 | Create, edit, search and delete customers (delete only without bookings). | M | ✅ |
-| FR-CUS-2 | The profile shows booking history, payment history, totals and outstanding balance. | M | ✅ |
-| FR-CUS-3 | Duplicate email or phone within the agency is rejected with the existing customer's name. | S | ✅ |
-| FR-CUS-4 | Passport numbers are masked except for roles allowed to edit customers. | M | ✅ |
-| FR-CUS-5 | Internal notes and tags (e.g. VIP). | S | ✅ |
+| FR-10 | Tour categories per office; tours with itinerary, images, accommodation/transport info, terms, and an active flag. | ✅ | R, D |
+| FR-11 | Trips are created from tours, in one branch, VIP **or** Standard, with dates, minimum passengers, maximum seats, registration deadline and supervisors. | ✅ | T |
+| FR-12 | Registration closes automatically at the (extended) deadline. The admin then decides: **approve / extend / cancel**. Decisions are recorded with the confirmed count against the minimum. Cancelling a trip cancels its bookings and keeps their payments. | ✅ | T |
+| FR-13 | Passenger manifest per trip; supervisors record attendance. | ✅ | R, D |
 
-### 3.7 Suppliers
-| ID | Requirement | Pri | Status |
+### 2.4 Pricing, offers, supplier dues
+| ID | Requirement | Status | V |
 |---|---|---|---|
-| FR-SUP-1 | Manage hotels (stars, rooms, nightly rate, room types, amenities, check-in and check-out). | M | ✅ |
-| FR-SUP-2 | Manage transport companies (vehicle type, fleet size, seats per vehicle, daily rate, licence). | M | ✅ |
-| FR-SUP-3 | Contacts, rating, notes and active flag; delete only when unused. | M | ✅ |
-| FR-SUP-4 | Show the trips each supplier serves, with committed and paid amounts. | S | ✅ |
+| FR-14 | One supplier per service type per trip. Each service has a cost per person and its own profit %. **Selling = cost × (1 + profit%)**. The trip price is the sum. | ✅ | T |
+| FR-15 | A trip can only open registration with at least one priced service. | ✅ ⏳ | T |
+| FR-16 | Offers apply to the whole trip: percentage or fixed (per person), with a period and an active flag. A discount can never exceed the price. Overlapping active offers are refused. | ✅ ⏳ | T |
+| FR-17 | Supplier dues per trip = cost × confirmed passengers, plus office→supplier payments, plus the remaining balance. | ✅ | T |
 
-### 3.8 Reports
-| ID | Requirement | Pri | Status |
+### 2.5 Customers, bookings, passengers, seats
+| ID | Requirement | Status | V |
 |---|---|---|---|
-| FR-REP-1 | Revenue, refunds, expenses and profit by month for a date range. | M | ✅ |
-| FR-REP-2 | Popular trips, seat utilisation and trip profitability (actual or estimated cost). | M | ✅ |
-| FR-REP-3 | Outstanding balances with due date and overdue flag. | M | ✅ |
-| FR-REP-4 | Breakdown by booking source and payment method. | S | ✅ |
+| FR-18 | Customers are office-wide (unique phone): search by name, phone, national ID or passport; booking history; a statement per currency. | ✅ | T |
+| FR-19 | Bookings are created by staff with **one record per passenger**. The passenger count equals the number of records. | ✅ | T |
+| FR-20 | Booking totals are computed on the server from the trip price and the active offer, and frozen as a snapshot. Later price changes never alter existing bookings. | ✅ | T |
+| FR-21 | **Only CONFIRMED bookings take seats.** Pending and waiting-list bookings don't. Cancelling releases seats. Confirmation never exceeds capacity, **including concurrent requests**. | ✅ | T |
+| FR-22 | Statuses: Pending, Confirmed, Waiting list, Cancelled, with a recorded history of every change. | ✅ | T |
+| FR-23 | A booking can be transferred to another trip in the same scope and currency, with re-pricing. The old price is kept in its history. | ✅ | T |
+| FR-24 | Printable booking confirmation. | ✅ | D |
 
-### 3.9 Public agency page
-| ID | Requirement | Pri | Status | Verify |
-|---|---|---|---|---|
-| FR-PUB-1 | The agency can enable or disable its public page; a disabled page returns 404. | M | ✅ | T |
-| FR-PUB-2 | The page shows the agency's branding and its public, upcoming, published trips with live seats left and offers. | M | ✅ | T |
-| FR-PUB-3 | A traveller can submit a booking request that holds seats as a Pending booking and receives a reference. | M | ✅ | T |
-| FR-PUB-4 | The page exposes no costs, internal notes or internal identifiers. | M | ✅ | T |
-
-### 3.10 Agency and team
-| ID | Requirement | Pri | Status |
+### 2.6 Payments and refunds
+| ID | Requirement | Status | V |
 |---|---|---|---|
-| FR-ADM-1 | Edit the agency profile, currency, booking policy (deposit %, due days, terms) and public page settings. | M | ✅ |
-| FR-ADM-2 | Add team members with roles; change roles; deactivate. | M | ✅ |
-| FR-ADM-3 | The agency always keeps at least one active owner; only owners manage owners. | M | ✅ |
-| FR-ADM-4 | Every significant change is written to an activity log in the same transaction. | S | ✅ |
+| FR-25 | Multiple cash payments per booking, in the booking's currency, never above the balance; receipt numbers and printable receipts. | ✅ | T, D |
+| FR-26 | Manual refunds are linked to the original payment (partial allowed), never above what remains refundable. Payment history is never deleted. | ✅ | T |
 
-## 4. Non-functional requirements
+### 2.7 Dashboard, reports, public pages
+| ID | Requirement | Status | V |
+|---|---|---|---|
+| FR-27 | Dashboard: bookings, upcoming trips, confirmed passengers, available seats, tasks. For financial roles: collected, outstanding, **expected vs realised profit per currency**. | ✅ | T, D |
+| FR-28 | Reports: bookings, upcoming trips, passenger list, customer statement, payments, refunds, trip pricing & profit. Excel export (RTL) and print-to-PDF. | ✅ | T, D |
+| FR-29 | Public showcase: published trips of offices with a public page, moving ads, filters (destination, category, date, type, offers), the owning office, its location and WhatsApp. There is no booking record and no checkout. | ✅ | T, D |
+| FR-30 | Office page (location, branches, trips, ads) and trip page (itinerary, price, seats, WhatsApp "Book now" with a prefilled message). A disabled page answers 404. | ✅ | T, D |
 
-| ID | Category | Requirement |
-|---|---|---|
-| NFR-SEC-1 | Security | Input is validated and whitelisted; unknown fields are rejected. |
-| NFR-SEC-2 | Security | SQL is parameterised (TypeORM); no string-built queries with user input. |
-| NFR-SEC-3 | Security | Rate limits: 300 req/min globally, 10/min for login, 5/min for public booking requests. |
-| NFR-SEC-4 | Security | Helmet security headers and CORS restricted to the web origin. |
-| NFR-SEC-5 | Security | Errors use one format; database errors and stack traces never reach clients. |
-| NFR-SEC-6 | Security | Secrets live only in `.env` (never committed); the JWT secret is at least 32 characters, checked at boot. |
-| NFR-REL-1 | Integrity | Business invariants are also enforced by database CHECK constraints (seats ≤ capacity, positive amounts, offer < price, valid dates). |
-| NFR-REL-2 | Integrity | Multi-step operations (booking + seats + payment, cancel + release + refund) are atomic. |
-| NFR-REL-3 | Integrity | The schema is changed only by reversible migrations. |
-| NFR-PERF-1 | Performance | Lists are paginated (maximum 100 rows per page); all tenant queries use composite indexes starting with `agency_id`. |
-| NFR-PERF-2 | Performance | The dashboard is one API call with aggregated SQL, with no per-row queries. |
-| NFR-USE-1 | Usability | Responsive from 375 px; light and dark themes; text contrast meets WCAG AA (measured). |
-| NFR-USE-2 | Usability | Every view has loading, empty and error states; API messages are human-readable. |
-| NFR-MAIN-1 | Maintainability | TypeScript end to end; one shared vocabulary package; modular API folders; e2e tests run against a real database. |
-| NFR-PORT-1 | Portability | Runs on any laptop with Node.js and XAMPP; `DB_TYPE` selects MariaDB or MySQL. |
+### 2.8 Supplier integrations (hotel and transport systems)
+| ID | Requirement | Status | V |
+|---|---|---|---|
+| FR-31 | Connection settings per hotel/transport supplier. Secrets are referenced by name only and never returned. Restaurants are manual. | 🟡 | T |
+| FR-32 | External reservations are separate from internal bookings: their own statuses, partial success, reconciliation of uncertain outcomes, duplicate prevention. | 🟡 data model + client; adapters wait for the API docs | R |
 
-## 5. External interfaces
-- **User interface:** web console at `/` and public page at `/a/{slug}` (see the design system).
-- **API:** REST/JSON at `/api`, OpenAPI at `/api/docs` (see the API contract).
-- **Database:** MariaDB/MySQL over TCP 3306.
+## 3. Non-functional requirements
 
-## 6. Data requirements
-See [Database](../database/README.md). In summary:
-- 17 tables, 32 foreign keys, 9 CHECK constraints.
-- UUID primary keys.
-- UTC timestamps with millisecond precision.
-- DECIMAL(12,2) for money.
+| ID | Requirement |
+|---|---|
+| NFR-1 Security | bcrypt; rotating refresh tokens; RBAC on every route; office and branch scope from the token; whitelisted DTO validation; rate limits; Helmet; CORS; no secrets in responses or logs; public data minimised. |
+| NFR-2 Integrity | CHECK constraints (seats, prices, discounts, refunds); composite foreign keys preventing cross-office links; multi-step operations in transactions; audit log in the same transaction. |
+| NFR-3 Money | `NUMERIC(14,2)` and decimal.js. No floats. Never sum different currencies. |
+| NFR-4 Performance | Paginated lists; indexes led by `office_id` / `branch_id`; aggregate SQL for the dashboard and reports (no N+1). |
+| NFR-5 Usability | Arabic RTL and English LTR with a true mirrored layout; responsive from 375 px; light and dark themes (WCAG AA measured); loading, empty and error states; human-readable errors. |
+| NFR-6 Maintainability | TypeScript end to end; modular NestJS; Prisma migrations; shared permission catalogue; 40 e2e tests; lint clean. |
+| NFR-7 Portability | Any machine with Node.js and PostgreSQL; configuration in `.env` (`.env.example` provided). |
 
-## 7. Traceability to tests
-`apps/api/test/bookings.e2e-spec.ts` covers FR-AUTH-3/4/5, FR-BOOK-1/2/3/4/5/6, FR-FIN-1/2/3/4, FR-TRIP-5/8 and FR-PUB-1/2/3/4. Run it with `npm run test:e2e`.
+## 4. Traceability
 
-## 8. Roadmap (beyond this release)
-1. Online deposit payment (payment gateway) on the public page.
-2. Automated WhatsApp and email reminders for balances due and departures.
-3. Room allocation and seating plans per vehicle.
-4. Multi-currency pricing and exchange rates.
-5. Supplier invoices and payables.
-6. Mobile app for tour leaders (manifest, check-in).
-7. httpOnly cookie sessions, two-factor authentication and audit export.
+The e2e suites (`npm run test:e2e`, 40 tests) cover the requirements as follows:
+
+| Suite | Requirements |
+|---|---|
+| `auth.e2e-spec.ts` | FR-1 |
+| `organization.e2e-spec.ts` | FR-2, FR-4, FR-5, FR-6, FR-8 |
+| `bookings.e2e-spec.ts` | FR-3, FR-11, FR-12, FR-14, FR-15, FR-16, FR-19, FR-20, FR-21, FR-22, FR-23, FR-25, FR-26 |
+| `reports-public.e2e-spec.ts` | FR-7, FR-9, FR-17, FR-18, FR-27, FR-28, FR-29, FR-30, FR-31 |
+
+## 5. Roadmap
+
+1. Hotel and transport adapters, built once their API documentation and sandbox credentials are provided.
+2. File uploads for images (URLs today).
+3. Subscription plans and billing for offices.
+4. WhatsApp and SMS reminders for balances and departures.
+5. httpOnly cookie sessions and two-factor authentication.
+6. Scheduled jobs (deadline notifications) and backups.
