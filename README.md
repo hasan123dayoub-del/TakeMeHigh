@@ -1,8 +1,18 @@
-# TravelOS
+# سفرني · Safarni
 
-**The daily operating system for travel agencies.** It covers programs and offers, prices, bookings, customers, hotel and transport suppliers, and live seat availability, all in one dashboard. Each agency can also turn on its own public page where travellers book its ready trips directly.
+**The daily operating system for tourism offices.** It covers:
+- programs and offers
+- prices built from supplier costs plus profit
+- bookings with an individual record for every passenger
+- customers
+- suppliers (hotels, transport, restaurants)
+- live seat availability
 
-TravelOS is **not a central travel marketplace**. It replaces the notebooks, WhatsApp threads, Word files and spreadsheets an agency runs on today with one tool its whole team uses every day.
+All of it lives in one dashboard, in Arabic (RTL) and English.
+
+Each office can also enable its own public page, and appear on the Safarni showcase, where travellers browse published trips and contact the office on WhatsApp.
+
+Safarni is **not a central travel marketplace**. It replaces the notebooks, WhatsApp threads, Word files and spreadsheets a tourism office runs on today.
 
 Built for the ByteForFuture × AFK Hackathon 2026.
 
@@ -10,46 +20,42 @@ Built for the ByteForFuture × AFK Hackathon 2026.
 
 | Module | Highlights |
 |---|---|
-| **Dashboard** | Revenue this month against last month, outstanding and overdue balances, seats available, pending bookings, upcoming departures, booking trend, live activity feed |
-| **Trips & offers** | Programs with dates, capacity, adult and child prices, time-limited offers, day-by-day itinerary, supplier services with costs and projected margin |
-| **Bookings** | Booking in under a minute. Seats are reserved atomically, so there is **no overbooking, even under simultaneous requests**. Prices are computed on the server. Deposits confirm bookings automatically. Covers payments, refunds, cancellation (which releases seats) and a printable confirmation. |
-| **Customers** | Profiles, booking and payment history, internal notes, duplicate detection, passport masking by role |
-| **Suppliers** | Hotels (stars, rooms, nightly rate) and transport (vehicle, fleet, daily rate), plus which trips use them and what is committed |
-| **Finance** | Payments, refunds, expenses, net revenue, profit and outstanding balances. All amounts are decimal-safe. |
-| **Reports** | Revenue by period, trip profitability, seat utilisation, popular trips, outstanding balances with due dates, booking sources, payment methods |
-| **Public agency page** | `/a/{agency}`: the agency's branding, its published trips with live availability and offers, and direct booking requests that hold seats |
-| **Team & roles** | Owner, Administrator, Operations Manager, Booking Agent, Accountant, enforced by the API |
+| **Offices & branches** | Multi-tenant SaaS. Each office has branches, and each employee belongs to exactly one branch. Data is isolated per office and per branch, enforced by the API and by composite database keys. |
+| **Roles** | Configurable roles and permissions. Default roles: **Admin** (whole office) and **Reception** (own branch: customers, bookings, cash payments). |
+| **Tours & trips** | A Tour is the reusable program (itinerary, images, terms). A Trip is a dated run of it in one branch: VIP or Standard, one currency, minimum passengers, maximum seats, registration deadline. When the deadline passes, the admin decides to **approve, extend or cancel**. |
+| **Pricing & profit** | One supplier per service type (hotel, transport, restaurant), each with its own profit %: **selling = cost × (1 + profit%)**. Example: a coach at 200,000 SYP net plus 15% = 230,000. |
+| **Bookings** | **Only confirmed bookings take seats**, and seats never oversell, even under simultaneous requests. Includes a waiting list, transfers to another trip, and price snapshots that never change afterwards. |
+| **Payments** | Cash payments in the booking's currency, receipts, and refunds linked to the original payment. Payment history is never deleted. |
+| **Supplier dues** | What the office owes each supplier (cost × confirmed passengers), what it has paid, and what remains. |
+| **Offers** | Percentage or fixed discount per person, with a validity period. Overlapping offers are refused. |
+| **Dashboard & reports** | Money is kept per currency. Revenue, collected cash, expected profit and realised profit stay separate. Seven reports with Excel export and print-to-PDF. |
+| **Public pages** | The Safarni showcase with moving ads and filters; office pages with a map and WhatsApp; trip pages with a prefilled WhatsApp "Book now". There is no checkout and no customer accounts. |
+| **Supplier integrations** | A secure foundation for the hotel and transport systems' APIs (adapters pending their documentation). See `docs/integrations`. |
 
 ## Tech stack
 
-- **Web:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Radix UI, TanStack Query and Table, React Hook Form + Zod, Recharts, Motion, Sonner.
-- **API:** NestJS 12, TypeORM, JWT + Passport, bcrypt, class-validator, Swagger, Helmet, Throttler, decimal.js.
-- **Database:** MariaDB 10.4 (XAMPP) or MySQL 8, with versioned migrations, CHECK constraints and seed scripts.
-- **Quality:** Jest + Supertest e2e tests against the real database, ESLint, Prettier.
-
-Read more:
-- [Architecture](docs/architecture/README.md)
-- [Database & ERD](docs/database/README.md)
-- [API contract](docs/api/README.md)
-- [Design system](docs/design/design-system.md)
-- [SRS](docs/srs/SRS.md)
-- [Use cases](docs/use-cases/README.md)
-- [Demo guide](docs/DEMO.md)
+- **Web:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Radix UI, TanStack Query and Table, React Hook Form + Zod, Recharts, Motion. Arabic RTL and English LTR.
+- **API:** NestJS 12, Prisma 7 (driver adapter `@prisma/adapter-pg`), JWT access tokens + rotating refresh tokens, Passport, bcrypt, class-validator, Swagger, Helmet, Throttler, decimal.js, ExcelJS.
+- **Database:** PostgreSQL 18, with versioned Prisma migrations, 15 CHECK constraints and composite `(office_id, id)` foreign keys.
+- **Quality:** 40 end-to-end tests against the real database, ESLint, Prettier, TypeScript strict.
 
 ## Getting started (Windows)
 
-Prerequisites: **Node.js 22+** (with npm) and **XAMPP** (for its MySQL/MariaDB).
+Prerequisites: **Node.js 22+** (with npm) and **PostgreSQL** (16+).
 
-1. Start **MySQL** in the XAMPP Control Panel.
-2. In the project folder, copy `.env.example` to `.env`. Do this **once only**, on a fresh clone. Then set `JWT_SECRET` to any random text of at least 32 characters.
-   ```powershell
-   Copy-Item .env.example .env
+1. Create a database and a user for Safarni. For example, in `psql` as the `postgres` user:
+   ```sql
+   CREATE ROLE safarni LOGIN PASSWORD 'choose-a-password' CREATEDB;
+   CREATE DATABASE safarni OWNER safarni;
    ```
-3. Install the dependencies:
+2. Copy `.env.example` to `.env`. Do this **once only**, on a fresh clone. Then set:
+   - `DATABASE_URL`: your database, user and password
+   - `JWT_SECRET`: any random text of at least 32 characters
+3. Install the dependencies. The Prisma client is generated automatically:
    ```powershell
    npm install
    ```
-4. Create the database, run the migrations and load the demo data:
+4. Run the migrations and load the demo data:
    ```powershell
    npm run db:setup
    ```
@@ -60,60 +66,67 @@ Prerequisites: **Node.js 22+** (with npm) and **XAMPP** (for its MySQL/MariaDB).
 
 | What | Where |
 |---|---|
-| Web app | http://localhost:3000 |
+| Safarni showcase (public) | http://localhost:3000 |
+| Office page (public) | http://localhost:3000/sham-travel |
+| Dashboard | http://localhost:3000/dashboard |
 | API | http://localhost:3001/api |
 | API docs (Swagger) | http://localhost:3001/api/docs |
-| Public agency page | http://localhost:3000/a/horizon-travel |
-| Database | MariaDB on localhost:3306, database `travelos` |
 
-Demo sign-in: `owner@demo.travelos.local` / `TravelOS@2026`. Every role's account is listed in [docs/DEMO.md](docs/DEMO.md).
-
-### Troubleshooting: "port 3000 (or 3001) is already in use" (`EADDRINUSE`)
-
-Usually TravelOS is **already running** in another terminal. Check before starting a second copy:
-
-```powershell
-Get-NetTCPConnection -State Listen -LocalPort 3000,3001 | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
-```
-
-- If the command line points to `...\travelos\...` (next dev / apps\api\dist\main), it is TravelOS. Use it at http://localhost:3000, or stop it with `Ctrl+C` in the terminal that started it.
-- If another application owns the port, don't kill it. Change the ports instead. For example, to use 3100/3101, set these in `.env`:
-  - `API_PORT=3101`
-  - `CORS_ORIGIN=http://localhost:3100`
-  - `NEXT_PUBLIC_API_URL=http://localhost:3101/api`
-
-  Then start the web app with `npm run dev -w @travelos/web -- --port 3100`.
+The demo accounts are in [docs/DEMO.md](docs/DEMO.md). All of them use the password `Safarni@2026`.
 
 ## Scripts
 
 | Command | Description |
 |---|---|
-| `npm run dev` | API (watch) + web (dev) together |
-| `npm run build` | Build shared, API and web |
-| `npm run test:e2e` | End-to-end API tests against the local database |
+| `npm run dev` | API (watch) + web (dev) |
+| `npm run build` | Build the shared package, API and web |
+| `npm run test:e2e` | End-to-end API tests against the database |
 | `npm run lint` | ESLint for API and web |
-| `npm run db:migrate` / `db:revert` | Apply / revert migrations |
-| `npm run db:seed` / `db:reset` | Seed demo data / wipe and reseed |
+| `npm run db:migrate` | Apply the migrations (`prisma migrate deploy`) |
+| `npm run db:seed` | Load the demo data (refuses if it already exists) |
+| `npm run db:reset` | Drop everything, re-apply the migrations and seed again (asks Prisma for confirmation) |
+| `npm run db:studio` | Browse the database with Prisma Studio |
+
+### Troubleshooting: "port 3000 (or 3001) is already in use"
+
+Safarni is probably already running in another terminal. Check before starting a second copy:
+
+```powershell
+Get-NetTCPConnection -State Listen -LocalPort 3000,3001 | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
+```
+
+If the port belongs to another application, don't stop it. Change `API_PORT`, `CORS_ORIGIN` and `NEXT_PUBLIC_API_URL` in `.env` instead.
 
 ## Project structure
 
 ```
 travelos/
 ├── apps/
-│   ├── api/          NestJS API (modules, migrations, seeds, e2e tests)
-│   └── web/          Next.js web app (console, public page, design system)
-├── packages/
-│   └── shared/       Roles, statuses and the permission matrix shared by API and web
-├── docs/             Architecture, database, API, SRS, use cases, design, demo
-└── scripts/          Helper scripts
+│   ├── api/                NestJS API
+│   │   ├── prisma/         schema.prisma, migrations, seed.ts
+│   │   ├── src/            one folder per module (auth, offices, branches, employees, roles, tours,
+│   │   │                   trips, suppliers, customers, bookings, reports, public-pages, integrations…)
+│   │   └── test/           e2e tests (auth, isolation, pricing, seats, money rules, reports, public pages)
+│   └── web/                Next.js web app (dashboard, public pages, design system, i18n)
+├── packages/shared/        permissions catalogue, default roles, enums and AR/EN labels
+└── docs/                   SRS, architecture, database, API, integrations, open decisions, demo
 ```
+
+## Documentation
+
+- **Requirements:** [SRS](docs/srs/SRS.md), [Use cases](docs/use-cases/README.md), [Open decisions & technical defaults](docs/OPEN-DECISIONS.md)
+- **Design of the system:** [Architecture](docs/architecture/README.md), [Database](docs/database/README.md)
+- **API & integrations:** [API](docs/api/README.md) (plus Swagger and `docs/api/openapi.json`), [Supplier integrations](docs/integrations/README.md)
+- **Interface:** [Design system](docs/design/design-system.md), [Frontend brief](docs/FRONTEND-BRIEF.md)
+- **Running the demo:** [Demo guide](docs/DEMO.md)
 
 ## Security at a glance
 
-- Every record belongs to one agency, and the agency is taken only from the verified token.
-- Requests for another agency's ids return 404.
-- Role permissions are enforced by the API.
-- bcrypt passwords, rate limiting, Helmet headers, validated and whitelisted input.
-- Database errors and stack traces never reach the client.
-
-See [Architecture → Security](docs/architecture/README.md#security-controls) for details and known trade-offs.
+- Every record belongs to one office. Branch-owned records (trips, bookings, payments) also belong to one branch.
+- The office and branch come only from the verified token. Requests for other offices' or branches' ids return **404**.
+- **Passwords and sessions:**
+  - bcrypt passwords
+  - 15-minute access tokens
+  - refresh tokens that rotate, are stored hashed, and revoke the whole session when reused
+- **Requests:** rate limiting, Helmet headers, validated and whitelisted input.
+- **What never leaks:** supplier API secrets are never stored or returned (only the name of a server-side secret). Public pages never expose costs, profit or internal ids.

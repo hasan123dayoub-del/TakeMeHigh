@@ -1,100 +1,124 @@
-# TravelOS database
+# Safarni database
 
-- **Engine:** MariaDB 10.4 (the XAMPP default) or MySQL 8.
-- **Character set:** utf8mb4.
-- **Time zone:** UTC.
-- **Schema size:** 17 tables, **32 foreign keys** and **9 CHECK constraints**, created only through TypeORM migrations in `apps/api/src/database/migrations`.
+- **Engine:** PostgreSQL 18, through Prisma 7 (`@prisma/adapter-pg`). Schema: `apps/api/prisma/schema.prisma`.
+- **Size:** 32 tables, 70 foreign keys, 15 CHECK constraints. UUID primary keys.
+- **Types:** money is `NUMERIC(14,2)`; timestamps are `timestamptz(3)`; calendar dates are `date`.
 
 ## Commands
 
 | Command | Effect |
 |---|---|
-| `npm run db:create` | Creates the `travelos` database if missing |
-| `npm run db:migrate` | Runs pending migrations |
-| `npm run db:revert` | Reverts the last migration |
-| `npm run db:seed` | Seeds the demo agency (refuses if it already exists) |
-| `npm run db:reset` | Wipes all data and seeds again (local demo only) |
-| `npm run db:setup` | create + migrate + seed |
+| `npm run db:migrate` | `prisma migrate deploy`: apply pending migrations |
+| `npm run db:migrate:dev` | `prisma migrate dev`: create a new migration from schema changes (development) |
+| `npm run db:seed` | Load the demo data (refuses if it already exists) |
+| `npm run db:reset` | Drop, re-migrate and seed (development only; Prisma asks for confirmation) |
+| `npm run db:studio` | Browse the data |
 
-Migrations so far:
-1. `InitialSchema`: all tables, foreign keys, indexes and the business CHECK constraints.
-2. `AddTripOffers`: offer price, label and end date on trips, plus `chk_trips_offer`.
+## Isolation built into the schema
 
-## Entity relationship diagram
+- **Every business table carries `office_id`.**
+- **Branch-owned tables also carry `branch_id`:** trips, bookings, payments.
+- **Composite keys:** parents expose `UNIQUE (office_id, id)` and children reference `(office_id, parent_id)`. For example, a booking references `(office_id, trip_id)` and `(office_id, customer_id)`. So a row can never point to another office's trip, customer, branch, supplier or payment, even through a coding mistake.
+- **The application layer adds** office and branch scoping from the verified token on every query (`apps/api/src/common/scope.ts`).
 
-Every table except `agencies`, `hotel_details` and `transportation_details` has an `agency_id` foreign key to `agencies`. The diagram leaves those tenant links out so it stays readable.
+## Entity relationship diagram (core)
 
 ```mermaid
 erDiagram
-  AGENCIES ||--|| AGENCY_SETTINGS : "has"
-  AGENCIES ||--o{ USERS : "employs"
-  AGENCIES ||--o{ CUSTOMERS : "serves"
-  AGENCIES ||--o{ DESTINATIONS : "offers"
-  AGENCIES ||--o{ SUPPLIERS : "works with"
-  AGENCIES ||--o{ TRIPS : "runs"
-  DESTINATIONS ||--o{ TRIPS : "hosts"
-  TRIPS ||--o{ TRIP_ITINERARIES : "day by day"
-  TRIPS ||--o{ TRIP_SUPPLIERS : "uses services"
-  SUPPLIERS ||--o{ TRIP_SUPPLIERS : "provides"
-  SUPPLIERS ||--o| HOTEL_DETAILS : "if hotel"
-  SUPPLIERS ||--o| TRANSPORTATION_DETAILS : "if transport"
-  TRIPS ||--o{ BOOKINGS : "sold as"
-  CUSTOMERS ||--o{ BOOKINGS : "makes"
-  USERS ||--o{ BOOKINGS : "created by"
-  BOOKINGS ||--o{ BOOKING_PASSENGERS : "travellers"
-  BOOKINGS ||--o{ PAYMENTS : "paid by"
-  BOOKINGS ||--o{ REFUNDS : "refunded by"
-  USERS ||--o{ PAYMENTS : "received by"
-  USERS ||--o{ REFUNDS : "processed by"
-  TRIPS ||--o{ EXPENSES : "costs"
-  SUPPLIERS ||--o{ EXPENSES : "billed by"
-  USERS ||--o{ ACTIVITY_LOGS : "performed"
+  OFFICES ||--o{ BRANCHES : has
+  OFFICES ||--o{ ROLES : defines
+  ROLES ||--o{ ROLE_PERMISSIONS : grants
+  PERMISSIONS ||--o{ ROLE_PERMISSIONS : in
+  USERS ||--o| OFFICE_MEMBERS : "works as"
+  OFFICES ||--o{ OFFICE_MEMBERS : employs
+  BRANCHES ||--o{ OFFICE_MEMBERS : "home branch"
+  ROLES ||--o{ OFFICE_MEMBERS : role
+  USERS ||--o{ REFRESH_TOKENS : sessions
+  OFFICES ||--o{ OFFICE_CURRENCIES : uses
+  CURRENCIES ||--o{ OFFICE_CURRENCIES : ""
 
-  AGENCIES { varchar id PK  varchar slug UK  varchar name  char currency  varchar timezone  bool is_active }
-  AGENCY_SETTINGS { varchar agency_id FK,UK  bool public_page_enabled  decimal deposit_percent  smallint balance_due_days_before_departure  varchar brand_color }
-  USERS { varchar id PK  varchar agency_id FK  varchar email UK  varchar password_hash  enum role  bool is_active }
-  CUSTOMERS { varchar id PK  varchar agency_id FK  varchar first_name  varchar last_name  varchar email  varchar phone  varchar passport_number }
-  DESTINATIONS { varchar id PK  varchar agency_id FK  varchar name  varchar country }
-  TRIPS { varchar id PK  varchar agency_id FK  varchar code  varchar destination_id FK  date departure_date  date return_date  int capacity  int seats_booked  decimal price_per_person  decimal child_price  decimal offer_price  date offer_ends_at  enum status  bool is_public }
-  TRIP_ITINERARIES { varchar id PK  varchar trip_id FK  smallint day_number  varchar title }
-  SUPPLIERS { varchar id PK  varchar agency_id FK  enum type  varchar name  tinyint rating  bool is_active }
-  HOTEL_DETAILS { varchar id PK  varchar supplier_id FK,UK  tinyint star_rating  decimal nightly_rate }
-  TRANSPORTATION_DETAILS { varchar id PK  varchar supplier_id FK,UK  enum vehicle_type  int fleet_size  decimal daily_rate }
-  TRIP_SUPPLIERS { varchar id PK  varchar trip_id FK  varchar supplier_id FK  varchar service  int quantity  decimal unit_cost  decimal total_cost }
-  BOOKINGS { varchar id PK  varchar agency_id FK  varchar reference  varchar trip_id FK  varchar customer_id FK  enum status  enum source  smallint seats  decimal total_amount  decimal paid_amount  decimal refunded_amount  enum payment_status }
-  BOOKING_PASSENGERS { varchar id PK  varchar booking_id FK  varchar full_name  enum type }
-  PAYMENTS { varchar id PK  varchar booking_id FK  decimal amount  enum method  bool is_deposit  datetime paid_at }
-  REFUNDS { varchar id PK  varchar booking_id FK  decimal amount  enum method  varchar reason  datetime refunded_at }
-  EXPENSES { varchar id PK  varchar agency_id FK  enum category  decimal amount  date expense_date  varchar trip_id FK  varchar supplier_id FK }
-  ACTIVITY_LOGS { varchar id PK  varchar agency_id FK  varchar user_id FK  varchar action  varchar entity_type  varchar summary  json metadata }
+  OFFICES ||--o{ TOUR_CATEGORIES : has
+  TOUR_CATEGORIES ||--o{ TOURS : groups
+  TOURS ||--o{ TOUR_DAYS : itinerary
+  TOURS ||--o{ TOUR_IMAGES : images
+  TOURS ||--o{ TRIPS : "scheduled as"
+  BRANCHES ||--o{ TRIPS : owns
+  CURRENCIES ||--o{ TRIPS : "priced in"
+  TRIPS ||--o{ TRIP_SERVICES : "hotel/transport/restaurant"
+  SUPPLIERS ||--o{ TRIP_SERVICES : provides
+  TRIPS ||--o{ TRIP_OFFERS : offers
+  TRIPS ||--o{ TRIP_SUPERVISORS : supervised
+  TRIPS ||--o{ TRIP_REGISTRATION_DECISIONS : decisions
+
+  OFFICES ||--o{ CUSTOMERS : serves
+  CUSTOMERS ||--o{ BOOKINGS : owns
+  TRIPS ||--o{ BOOKINGS : "booked on"
+  BOOKINGS ||--o{ BOOKING_PASSENGERS : passengers
+  BOOKINGS ||--o{ BOOKING_EVENTS : history
+  BOOKINGS ||--o{ PAYMENTS : "paid by"
+  PAYMENTS ||--o{ REFUNDS : "refunded by"
+  SUPPLIERS ||--o{ SUPPLIER_PAYMENTS : "paid to"
+  TRIPS ||--o{ SUPPLIER_PAYMENTS : "settles"
+
+  SUPPLIERS ||--o| SUPPLIER_INTEGRATIONS : "external system"
+  BOOKINGS ||--o{ EXTERNAL_RESERVATIONS : "hotel/transport reservations"
+  SUPPLIER_INTEGRATIONS ||--o{ INTEGRATION_LOGS : calls
+  OFFICES ||--o{ PROMO_BANNERS : ads
+  OFFICES ||--o{ AUDIT_LOGS : audit
+
+  TRIPS { uuid id PK  uuid office_id  uuid branch_id  uuid tour_id  enum trip_type  date departure_date  char currency_code  smallint min_passengers  smallint max_seats  smallint confirmed_seats  date registration_deadline  enum status  numeric cost_per_person  numeric selling_price_per_person }
+  TRIP_SERVICES { uuid id PK  uuid trip_id  uuid supplier_id  enum service_type "UNIQUE(trip, type)"  numeric cost_per_person  numeric profit_percent  numeric selling_price_per_person }
+  BOOKINGS { uuid id PK  uuid office_id  uuid branch_id  uuid trip_id  uuid customer_id  varchar reference  enum status  smallint passenger_count  char currency_code  numeric unit_price  numeric unit_cost  numeric discount_amount  numeric total_amount  numeric paid_amount  numeric refunded_amount }
+  PAYMENTS { uuid id PK  uuid booking_id  numeric amount  char currency_code  varchar receipt_number  numeric refunded_amount }
+  REFUNDS { uuid id PK  uuid payment_id  uuid booking_id  numeric amount  varchar reason }
 ```
 
 ## Tables
 
-| Table | Purpose | Notable rules |
+| Area | Tables |
+|---|---|
+| Identity & organisation | `users`, `offices`, `branches`, `office_members` (one per user; exactly one branch), `roles`, `permissions`, `role_permissions`, `refresh_tokens` (SHA-256 hash, rotation family) |
+| Currencies | `currencies` (SYP, USD), `office_currencies` |
+| Programs | `tour_categories`, `tours`, `tour_days`, `tour_images` |
+| Trips | `trips`, `trip_services`, `trip_offers`, `trip_supervisors`, `trip_registration_decisions` |
+| Suppliers | `suppliers` (HOTEL, TRANSPORT, RESTAURANT), `supplier_payments` |
+| Customers & bookings | `customers` (unique phone per office), `bookings`, `booking_passengers`, `booking_events` |
+| Money | `payments` (cash, unique receipt per office), `refunds` |
+| Integrations | `supplier_integrations` (secret **name** only), `external_reservations`, `integration_logs` |
+| Marketing & audit | `promo_banners`, `audit_logs` |
+
+## Business rules enforced by PostgreSQL (CHECK constraints)
+
+| Constraint | Rule |
+|---|---|
+| `chk_trips_seats` | `0 ≤ confirmed_seats ≤ max_seats`: no overbooking even if code fails |
+| `chk_trips_capacity` | `max_seats > 0`, `1 ≤ min_passengers ≤ max_seats` |
+| `chk_trips_dates` | return ≥ departure, registration deadline ≤ departure |
+| `chk_trips_prices` | non-negative cost and selling price |
+| `chk_trip_services_pricing` | `selling ≥ cost`, profit between 0 and 1000 % |
+| `chk_trip_offers_value` / `_period` | discount > 0, percentage ≤ 100, end ≥ start |
+| `chk_bookings_passengers` | at least one passenger |
+| `chk_bookings_amounts` | discount ≤ subtotal, no negative totals, paid or refunded amounts |
+| `chk_payments_amount` | amount > 0 and `refunded_amount ≤ amount` |
+| `chk_refunds_amount`, `chk_supplier_payments_amount` | amount > 0 |
+| `chk_tours_duration` | days ≥ 1, nights ≤ days |
+| `chk_promo_banners_period` | end ≥ start |
+| `chk_external_reservations` | quantity > 0 |
+
+## Derived values and how they stay consistent
+
+| Value | Source of truth | Kept consistent by |
 |---|---|---|
-| `agencies` | Tenant: one travel agency | `slug` unique (public page URL) |
-| `agency_settings` | Public page, deposit %, balance due days, terms, brand colour | 1:1 with agency |
-| `users` | Staff accounts with one of 5 roles | `email` unique platform-wide; bcrypt hash never selected by default |
-| `customers` | Traveller records | Indexed by (agency, name), (agency, phone), (agency, email); duplicates are blocked in the service |
-| `destinations` | Places the agency sells | Unique (agency, name) |
-| `trips` | Programs with dates, capacity, prices and offers | Unique (agency, code). `seats_booked` is maintained atomically. CHECKs: seats ≤ capacity, capacity > 0, return ≥ departure, offer < price |
-| `trip_itineraries` | Day-by-day plan | Unique (trip, day_number) |
-| `suppliers` | Hotels, transport, guides, other | Type-specific details in two 1:1 tables |
-| `hotel_details` / `transportation_details` | Stars, rooms, nightly rate / vehicle type, fleet, daily rate | Unique supplier_id |
-| `trip_suppliers` | Services a supplier provides for a trip, with cost | Feeds the projected margin |
-| `bookings` | Reservations | Unique (agency, reference). CHECKs: adults ≥ 1, seats = adults + children, non-negative amounts. Indexed by (agency, status, created_at), (trip, status), payment status |
-| `booking_passengers` | Named travellers per booking | Count equals seats |
-| `payments` / `refunds` | Money in and out per booking | CHECK amount > 0. `bookings.paid_amount` is updated in the same transaction |
-| `expenses` | Agency costs, optionally per trip or supplier | CHECK amount > 0 |
-| `activity_logs` | Append-only audit trail | Written in the same transaction as the change |
+| `trips.confirmed_seats` | Σ passengers of CONFIRMED bookings | Changed only by one conditional `UPDATE … WHERE confirmed_seats + n <= max_seats` inside the booking transaction, plus a CHECK constraint |
+| `trips.cost_per_person` / `selling_price_per_person` | Σ of `trip_services` | Recomputed in the same transaction whenever services change |
+| `bookings.paid_amount` / `refunded_amount` | payments − refunds | Conditional `UPDATE` in the same transaction as each payment or refund |
+| `payments.refunded_amount` | Σ refunds of that payment | Conditional `UPDATE … WHERE refunded_amount + x <= amount` |
+| Booking prices | Snapshot at booking time | Never recomputed when trip prices change. Transfers record the old snapshot in `booking_events`. |
 
 ## Delete behaviour
 
-| Relationship | On delete |
-|---|---|
-| Agency → all tenant rows | CASCADE |
-| Trip → itinerary / trip_suppliers | CASCADE |
-| Booking → passengers | CASCADE |
-| Trip, customer, destination, supplier referenced by bookings or services | RESTRICT. The API answers 409 with a hint, for example "set status to Cancelled instead". |
-| User referenced as creator, receiver or processor | SET NULL (history is kept) |
+- **Office → everything:** CASCADE.
+- **Business history is protected:**
+  - trips, customers, suppliers and payments referenced by bookings cannot be deleted (the API answers 409 with a hint, e.g. "deactivate instead")
+  - payments are never deleted when a booking is cancelled
+- **Users referenced in history** (recorded by, decided by) keep their rows. Employees are deactivated, not deleted.
