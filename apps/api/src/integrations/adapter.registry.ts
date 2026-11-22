@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { IntegrationError, IntegrationKind, SupplierAdapter } from './integration.types';
+import {
+  IntegrationError,
+  IntegrationKind,
+  SupplierAdapter,
+} from './integration.types';
 
 /**
  * Looks up the adapter for a supplier system.

@@ -16,7 +16,11 @@ export interface AuditInput {
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async log(user: AuthUser | null, input: AuditInput & { officeId?: string | null }, tx?: Tx) {
+  async log(
+    user: AuthUser | null,
+    input: AuditInput & { officeId?: string | null },
+    tx?: Tx,
+  ) {
     const db = tx ?? this.prisma;
     await db.auditLog.create({
       data: {
@@ -27,7 +31,8 @@ export class AuditService {
         entityType: input.entityType,
         entityId: input.entityId ?? null,
         summary: input.summary.slice(0, 255),
-        metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+        metadata: (input.metadata ?? undefined) as
+          Prisma.InputJsonValue | undefined,
       },
     });
   }

@@ -1,6 +1,18 @@
 import { PartialType } from '@nestjs/swagger';
-import { DISCOUNT_TYPES, REGISTRATION_DECISIONS, SUPPLIER_TYPES, TRIP_STATUSES, TRIP_TYPES } from '@travelos/shared';
-import type { DiscountType, RegistrationDecision, SupplierType, TripStatus, TripType } from '@travelos/shared';
+import {
+  DISCOUNT_TYPES,
+  REGISTRATION_DECISIONS,
+  SUPPLIER_TYPES,
+  TRIP_STATUSES,
+  TRIP_TYPES,
+} from '@travelos/shared';
+import type {
+  DiscountType,
+  RegistrationDecision,
+  SupplierType,
+  TripStatus,
+  TripType,
+} from '@travelos/shared';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -39,7 +51,10 @@ export class CreateTripDto {
   @IsUUID() tourId!: string;
   /** Admins choose the branch; Reception-scoped users are always placed in their own branch */
   @IsOptional() @IsUUID() branchId?: string;
-  @Matches(/^[A-Za-z0-9-]{2,24}$/, { message: 'code: 2-24 letters, digits or dashes' }) code!: string;
+  @Matches(/^[A-Za-z0-9-]{2,24}$/, {
+    message: 'code: 2-24 letters, digits or dashes',
+  })
+  code!: string;
   @IsIn(TRIP_TYPES) tripType!: TripType;
   /** YYYY-MM-DD */
   @IsDateString({ strict: true }) departureDate!: string;
@@ -51,13 +66,22 @@ export class CreateTripDto {
   @IsDateString({ strict: true }) registrationDeadline!: string;
   @IsOptional() @IsBoolean() isPublic?: boolean;
   @IsOptional() @IsString() @MaxLength(3000) notes?: string;
-  @IsOptional() @IsArray() @ArrayMaxSize(3) @ValidateNested({ each: true }) @Type(() => TripServiceDto) services?: TripServiceDto[];
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => TripServiceDto)
+  services?: TripServiceDto[];
 }
 
 export class UpdateTripDto extends PartialType(CreateTripDto) {}
 
 export class ReplaceServicesDto {
-  @IsArray() @ArrayMaxSize(3) @ValidateNested({ each: true }) @Type(() => TripServiceDto) services!: TripServiceDto[];
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => TripServiceDto)
+  services!: TripServiceDto[];
 }
 
 export class TripQueryDto extends PaginationQueryDto {
@@ -65,7 +89,8 @@ export class TripQueryDto extends PaginationQueryDto {
   @IsOptional() @IsUUID() tourId?: string;
   @IsOptional() @IsIn(TRIP_STATUSES) status?: TripStatus;
   @IsOptional() @IsIn(TRIP_TYPES) tripType?: TripType;
-  @IsOptional() @IsIn(['upcoming', 'past', 'all']) when?: 'upcoming' | 'past' | 'all';
+  @IsOptional() @IsIn(['upcoming', 'past', 'all']) when?:
+    'upcoming' | 'past' | 'all';
 }
 
 export class RegistrationDecisionDto {
@@ -76,7 +101,11 @@ export class RegistrationDecisionDto {
 }
 
 export class SetSupervisorsDto {
-  @IsArray() @ArrayUnique() @ArrayMaxSize(10) @IsUUID('all', { each: true }) memberIds!: string[];
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(10)
+  @IsUUID('all', { each: true })
+  memberIds!: string[];
 }
 
 export class CreateOfferDto {

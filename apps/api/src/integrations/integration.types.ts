@@ -58,7 +58,11 @@ export interface ReserveCommand extends AvailabilityQuery {
 }
 
 export type ExternalOutcome =
-  | { state: 'CONFIRMED'; externalReference: string; details?: Record<string, unknown> }
+  | {
+      state: 'CONFIRMED';
+      externalReference: string;
+      details?: Record<string, unknown>;
+    }
   | { state: 'PENDING'; externalReference?: string }
   | { state: 'FAILED'; reason: string; retryable: boolean }
   /** Request may have reached the provider but we got no answer: reconcile, never blind-retry */
@@ -69,10 +73,20 @@ export interface SupplierAdapter {
   readonly provider: string;
   readonly capabilities: IntegrationCapabilities;
   healthCheck(ctx: AdapterContext): Promise<{ ok: boolean; message?: string }>;
-  checkAvailability?(ctx: AdapterContext, q: AvailabilityQuery): Promise<AvailabilityResult>;
+  checkAvailability?(
+    ctx: AdapterContext,
+    q: AvailabilityQuery,
+  ): Promise<AvailabilityResult>;
   reserve?(ctx: AdapterContext, cmd: ReserveCommand): Promise<ExternalOutcome>;
-  getReservation?(ctx: AdapterContext, externalReference: string): Promise<ExternalOutcome>;
-  cancel?(ctx: AdapterContext, externalReference: string, idempotencyKey: string): Promise<ExternalOutcome>;
+  getReservation?(
+    ctx: AdapterContext,
+    externalReference: string,
+  ): Promise<ExternalOutcome>;
+  cancel?(
+    ctx: AdapterContext,
+    externalReference: string,
+    idempotencyKey: string,
+  ): Promise<ExternalOutcome>;
 }
 
 /** Per-call context. Credentials are resolved server-side from `credentialRef`, never from the client. */

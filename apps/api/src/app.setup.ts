@@ -9,7 +9,9 @@ export function configureApp(app: INestApplication, { swagger = true } = {}) {
 
   app.use(helmet());
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:3000').split(','),
+    origin: config
+      .get<string>('CORS_ORIGIN', 'http://localhost:3000')
+      .split(','),
     credentials: true,
   });
   app.setGlobalPrefix('api');
@@ -23,19 +25,24 @@ export function configureApp(app: INestApplication, { swagger = true } = {}) {
 
   if (swagger) {
     const doc = new DocumentBuilder()
-      .setTitle('TravelOS API')
+      .setTitle('Safarni API')
       .setDescription(
-        'Operations platform for travel agencies: trips & offers, bookings with live seat availability, ' +
-          'customers, hotel and transport suppliers, payments, expenses and reports. ' +
-          'Sign in with POST /api/auth/login, then click "Authorize" and paste the accessToken.',
+        'Safarni (سفرني): multi-tenant operations platform for tourism offices — branches, tours & trips, per-service pricing, ' +
+          'bookings with individual passengers and live seats, cash payments, refunds, supplier dues, reports and public pages. ' +
+          'Sign in with POST /api/auth/login, then click Authorize and paste the accessToken.',
       )
       .setVersion('0.1.0')
       .addBearerAuth()
       .build();
-    SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, doc), {
-      swaggerOptions: { persistAuthorization: true },
-      customSiteTitle: 'TravelOS API docs',
-    });
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(app, doc),
+      {
+        swaggerOptions: { persistAuthorization: true },
+        customSiteTitle: 'Safarni API docs',
+      },
+    );
   }
   return app;
 }

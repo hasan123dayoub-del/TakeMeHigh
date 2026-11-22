@@ -3,7 +3,9 @@ export function validateEnv(config: Record<string, unknown>) {
   const required = ['DATABASE_URL', 'JWT_SECRET'];
   const missing = required.filter((k) => !config[k]);
   if (missing.length) {
-    throw new Error(`Missing environment variables: ${missing.join(', ')}. See .env.example.`);
+    throw new Error(
+      `Missing environment variables: ${missing.join(', ')}. See .env.example.`,
+    );
   }
   if (!String(config.DATABASE_URL).startsWith('postgresql://')) {
     throw new Error('DATABASE_URL must be a postgresql:// connection string.');

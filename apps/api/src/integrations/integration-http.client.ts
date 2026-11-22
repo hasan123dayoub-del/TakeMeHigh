@@ -19,7 +19,14 @@ export interface IntegrationRequest {
   externalReservationId?: string;
 }
 
-const READS: IntegrationOperation[] = ['HEALTH', 'SEARCH', 'DETAILS', 'AVAILABILITY', 'PRICING', 'GET_RESERVATION'];
+const READS: IntegrationOperation[] = [
+  'HEALTH',
+  'SEARCH',
+  'DETAILS',
+  'AVAILABILITY',
+  'PRICING',
+  'GET_RESERVATION',
+];
 const MAX_ATTEMPTS = 3;
 
 /**
@@ -35,24 +42,41 @@ export class IntegrationHttpClient {
 
   async request<T>(ctx: AdapterContext, req: IntegrationRequest): Promise<T> {
     const canRetry = req.retry ?? READS.includes(req.operation);
-    const url = new URL(req.path, ctx.baseUrl.endsWith('/') ? ctx.baseUrl : `${ctx.baseUrl}/`);
+    const url = new URL(
+      req.path,
+      ctx.baseUrl.endsWith('/') ? ctx.baseUrl : `${ctx.baseUrl}/`,
+    );
 
     for (let attempt = 1; ; attempt++) {
       const started = Date.now();
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), req.timeoutMs ?? 10_000);
+      const timer = setTimeout(
+        () => controller.abort(),
+        req.timeoutMs ?? 10_000,
+      );
       try {
         const res = await fetch(url, {
           method: req.method,
-          headers: { 'content-type': 'application/json', 'x-correlation-id': ctx.correlationId, ...req.headers },
+          headers: {
+            'content-type': 'application/json',
+            'x-correlation-id': ctx.correlationId,
+            ...req.headers,
+          },
           body: req.body === undefined ? undefined : JSON.stringify(req.body),
           signal: controller.signal,
         });
         await this.log(ctx, req, url, res.status, started, res.ok);
 
         if (res.ok) return (await res.json()) as T;
-        const error = this.mapStatus(res.status, res.headers.get('retry-after'));
-        if (canRetry && attempt < MAX_ATTEMPTS && ['RATE_LIMITED', 'UNAVAILABLE'].includes(error.code)) {
+        const error = this.mapStatus(
+          res.status,
+          res.headers.get('retry-after'),
+        );
+        if (
+          canRetry &&
+          attempt < MAX_ATTEMPTS &&
+          ['RATE_LIMITED', 'UNAVAILABLE'].includes(error.code)
+        ) {
           await this.sleep(error.retryAfterMs ?? 300 * 2 ** attempt);
           continue;
         }
@@ -60,25 +84,61 @@ export class IntegrationHttpClient {
       } catch (e) {
         if (e instanceof IntegrationError) throw e;
         const timedOut = (e as Error).name === 'AbortError';
-        await this.log(ctx, req, url, null, started, false, timedOut ? 'TIMEOUT' : 'NETWORK', (e as Error).message);
+        await this.log(
+          ctx,
+          req,
+          url,
+          null,
+          started,
+          false,
+          timedOut ? 'TIMEOUT' : 'NETWORK',
+          (e as Error).message,
+        );
         if (canRetry && attempt < MAX_ATTEMPTS) {
           await this.sleep(300 * 2 ** attempt);
           continue;
         }
         // For writes this is an UNCERTAIN outcome; callers must mark the reservation UNKNOWN and reconcile.
-        throw new IntegrationError(timedOut ? 'TIMEOUT' : 'UNAVAILABLE', timedOut ? 'Supplier did not answer in time' : 'Supplier system unreachable');
+        throw new IntegrationError(
+          timedOut ? 'TIMEOUT' : 'UNAVAILABLE',
+          timedOut
+            ? 'Supplier did not answer in time'
+            : 'Supplier system unreachable',
+        );
       } finally {
         clearTimeout(timer);
       }
     }
   }
 
-  private mapStatus(status: number, retryAfter: string | null): IntegrationError {
-    const retryAfterMs = retryAfter ? Math.min(Number(retryAfter) * 1000 || 1000, 30_000) : undefined;
-    if (status === 401 || status === 403) return new IntegrationError('UNAUTHORIZED', 'Supplier rejected our credentials');
-    if (status === 429) return new IntegrationError('RATE_LIMITED', 'Supplier rate limit reached', retryAfterMs);
-    if (status >= 500) return new IntegrationError('UNAVAILABLE', `Supplier system error (${status})`, retryAfterMs);
-    return new IntegrationError('REJECTED', `Supplier rejected the request (${status})`);
+  private mapStatus(
+    status: number,
+    retryAfter: string | null,
+  ): IntegrationError {
+    const retryAfterMs = retryAfter
+      ? Math.min(Number(retryAfter) * 1000 || 1000, 30_000)
+      : undefined;
+    if (status === 401 || status === 403)
+      return new IntegrationError(
+        'UNAUTHORIZED',
+        'Supplier rejected our credentials',
+      );
+    if (status === 429)
+      return new IntegrationError(
+        'RATE_LIMITED',
+        'Supplier rate limit reached',
+        retryAfterMs,
+      );
+    if (status >= 500)
+      return new IntegrationError(
+        'UNAVAILABLE',
+        `Supplier system error (${status})`,
+        retryAfterMs,
+      );
+    return new IntegrationError(
+      'REJECTED',
+      `Supplier rejected the request (${status})`,
+    );
   }
 
   private async log(
@@ -109,7 +169,9 @@ export class IntegrationHttpClient {
         },
       });
     } catch (e) {
-      this.logger.warn(`Could not write integration log: ${(e as Error).message}`);
+      this.logger.warn(
+        `Could not write integration log: ${(e as Error).message}`,
+      );
     }
   }
 

@@ -17,7 +17,12 @@ export interface AuthUser {
 }
 
 /** Office staff identity (guaranteed by OfficeMemberGuard). */
-export type OfficeUser = AuthUser & { memberId: string; officeId: string; branchId: string; scope: RoleScope };
+export type OfficeUser = AuthUser & {
+  memberId: string;
+  officeId: string;
+  branchId: string;
+  scope: RoleScope;
+};
 
 export interface AccessTokenPayload {
   sub: string;

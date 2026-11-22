@@ -16,7 +16,9 @@ export const ACCOUNTS = {
 } as const;
 
 export async function createApp() {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
   const app = moduleRef.createNestApplication({ logger: ['error'] });
   configureApp(app, { swagger: false });
   await app.init();
@@ -24,11 +26,19 @@ export async function createApp() {
 }
 
 export async function login(app: INestApplication, email: string) {
-  const res = await request(app.getHttpServer()).post('/api/auth/login').send({ email, password: PASSWORD }).expect(200);
+  const res = await request(app.getHttpServer())
+    .post('/api/auth/login')
+    .send({ email, password: PASSWORD })
+    .expect(200);
   return res.body as {
     accessToken: string;
     refreshToken: string;
-    user: { office: { id: string } | null; branch: { id: string } | null; role: { scope: string } | null; permissions: string[] };
+    user: {
+      office: { id: string } | null;
+      branch: { id: string } | null;
+      role: { scope: string } | null;
+      permissions: string[];
+    };
   };
 }
 

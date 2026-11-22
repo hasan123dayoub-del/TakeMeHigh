@@ -24,25 +24,39 @@ export function officeWhere(user: AuthUser) {
  */
 export function branchWhere(user: AuthUser) {
   const u = officeUser(user);
-  return u.scope === 'OFFICE' ? { officeId: u.officeId } : { officeId: u.officeId, branchId: u.branchId };
+  return u.scope === 'OFFICE'
+    ? { officeId: u.officeId }
+    : { officeId: u.officeId, branchId: u.branchId };
 }
 
 /**
  * Throws 404 (never 403) when a branch-owned record is outside the user's reach, so ids from
  * other offices or branches cannot even be probed.
  */
-export function assertBranchAccess(user: AuthUser, record: { officeId: string; branchId: string } | null, label = 'Record') {
+export function assertBranchAccess(
+  user: AuthUser,
+  record: { officeId: string; branchId: string } | null,
+  label = 'Record',
+) {
   const u = officeUser(user);
-  if (!record || record.officeId !== u.officeId || (u.scope === 'BRANCH' && record.branchId !== u.branchId)) {
+  if (
+    !record ||
+    record.officeId !== u.officeId ||
+    (u.scope === 'BRANCH' && record.branchId !== u.branchId)
+  ) {
     throw new NotFoundException(`${label} not found`);
   }
 }
 
 /** For writes that target a branch: BRANCH-scoped users may only act inside their own branch. */
-export function resolveBranchId(user: AuthUser, requested?: string | null): string {
+export function resolveBranchId(
+  user: AuthUser,
+  requested?: string | null,
+): string {
   const u = officeUser(user);
   if (u.scope === 'BRANCH') {
-    if (requested && requested !== u.branchId) throw new ForbiddenException('You can only work inside your own branch');
+    if (requested && requested !== u.branchId)
+      throw new ForbiddenException('You can only work inside your own branch');
     return u.branchId;
   }
   return requested ?? u.branchId;

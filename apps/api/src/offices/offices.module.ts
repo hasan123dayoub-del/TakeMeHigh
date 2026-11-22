@@ -1,4 +1,13 @@
-import { BadRequestException, Body, Controller, Get, Injectable, Module, Patch, Put } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Injectable,
+  Module,
+  Patch,
+  Put,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -61,7 +70,10 @@ export class OfficesService {
     const { officeId } = officeUser(user);
     return this.prisma.office.findUniqueOrThrow({
       where: { id: officeId },
-      include: { currencies: { include: { currency: true } }, branches: { orderBy: [{ isMain: 'desc' }, { name: 'asc' }] } },
+      include: {
+        currencies: { include: { currency: true } },
+        branches: { orderBy: [{ isMain: 'desc' }, { name: 'asc' }] },
+      },
     });
   }
 
@@ -69,16 +81,36 @@ export class OfficesService {
     const { officeId } = officeUser(user);
     if (dto.defaultCurrencyCode) {
       const enabled = await this.prisma.officeCurrency.findUnique({
-        where: { officeId_currencyCode: { officeId, currencyCode: dto.defaultCurrencyCode.toUpperCase() } },
+        where: {
+          officeId_currencyCode: {
+            officeId,
+            currencyCode: dto.defaultCurrencyCode.toUpperCase(),
+          },
+        },
       });
-      if (!enabled) throw new BadRequestException('Enable the currency for the office before making it the default');
+      if (!enabled)
+        throw new BadRequestException(
+          'Enable the currency for the office before making it the default',
+        );
     }
     await this.prisma.$transaction(async (tx) => {
       await tx.office.update({
         where: { id: officeId },
-        data: { ...dto, defaultCurrencyCode: dto.defaultCurrencyCode?.toUpperCase() },
+        data: {
+          ...dto,
+          defaultCurrencyCode: dto.defaultCurrencyCode?.toUpperCase(),
+        },
       });
-      await this.audit.log(user, { action: 'office.updated', entityType: 'office', entityId: officeId, summary: 'Updated office settings' }, tx);
+      await this.audit.log(
+        user,
+        {
+          action: 'office.updated',
+          entityType: 'office',
+          entityId: officeId,
+          summary: 'Updated office settings',
+        },
+        tx,
+      );
     });
     return this.get(user);
   }
@@ -91,21 +123,40 @@ export class OfficesService {
   async setCurrencies(user: AuthUser, dto: SetCurrenciesDto) {
     const { officeId } = officeUser(user);
     const codes = [...new Set(dto.codes.map((c) => c.toUpperCase()))];
-    const office = await this.prisma.office.findUniqueOrThrow({ where: { id: officeId } });
+    const office = await this.prisma.office.findUniqueOrThrow({
+      where: { id: officeId },
+    });
     if (!codes.includes(office.defaultCurrencyCode)) {
-      throw new BadRequestException(`The default currency ${office.defaultCurrencyCode} must stay enabled`);
+      throw new BadRequestException(
+        `The default currency ${office.defaultCurrencyCode} must stay enabled`,
+      );
     }
-    const known = await this.prisma.currency.count({ where: { code: { in: codes } } });
-    if (known !== codes.length) throw new BadRequestException('Unknown currency code');
+    const known = await this.prisma.currency.count({
+      where: { code: { in: codes } },
+    });
+    if (known !== codes.length)
+      throw new BadRequestException('Unknown currency code');
     const inUse = await this.prisma.trip.findFirst({
-      where: { officeId, currencyCode: { notIn: codes }, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+      where: {
+        officeId,
+        currencyCode: { notIn: codes },
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+      },
       select: { code: true, currencyCode: true },
     });
-    if (inUse) throw new BadRequestException(`${inUse.currencyCode} is used by trip ${inUse.code}`);
+    if (inUse)
+      throw new BadRequestException(
+        `${inUse.currencyCode} is used by trip ${inUse.code}`,
+      );
 
     await this.prisma.$transaction([
-      this.prisma.officeCurrency.deleteMany({ where: { officeId, currencyCode: { notIn: codes } } }),
-      this.prisma.officeCurrency.createMany({ data: codes.map((currencyCode) => ({ officeId, currencyCode })), skipDuplicates: true }),
+      this.prisma.officeCurrency.deleteMany({
+        where: { officeId, currencyCode: { notIn: codes } },
+      }),
+      this.prisma.officeCurrency.createMany({
+        data: codes.map((currencyCode) => ({ officeId, currencyCode })),
+        skipDuplicates: true,
+      }),
     ]);
     return this.get(user);
   }
@@ -119,7 +170,9 @@ export class OfficesController {
 
   @Get('office')
   @RequirePermissions()
-  @ApiOperation({ summary: 'Current office profile, branches and enabled currencies' })
+  @ApiOperation({
+    summary: 'Current office profile, branches and enabled currencies',
+  })
   get(@CurrentUser() user: AuthUser) {
     return this.offices.get(user);
   }
@@ -131,7 +184,9 @@ export class OfficesController {
   }
 
   @Get('currencies')
-  @ApiOperation({ summary: 'Currencies supported by the platform (SYP, USD...)' })
+  @ApiOperation({
+    summary: 'Currencies supported by the platform (SYP, USD...)',
+  })
   currencies() {
     return this.offices.listCurrencies();
   }

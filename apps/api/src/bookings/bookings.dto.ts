@@ -39,11 +39,21 @@ export class CreateBookingDto {
   @IsUUID() tripId!: string;
 
   /** Existing customer (the booking owner / contact) — or `customer` to create one */
-  @ValidateIf((o: CreateBookingDto) => !o.customer) @IsUUID() customerId?: string;
-  @ValidateIf((o: CreateBookingDto) => !o.customerId) @ValidateNested() @Type(() => CreateCustomerDto) customer?: CreateCustomerDto;
+  @ValidateIf((o: CreateBookingDto) => !o.customer)
+  @IsUUID()
+  customerId?: string;
+  @ValidateIf((o: CreateBookingDto) => !o.customerId)
+  @ValidateNested()
+  @Type(() => CreateCustomerDto)
+  customer?: CreateCustomerDto;
 
   /** One record per traveller; the passenger count is the length of this list */
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => PassengerDto) passengers!: PassengerDto[];
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => PassengerDto)
+  passengers!: PassengerDto[];
 
   @IsOptional() @IsString() @MaxLength(3000) notes?: string;
   /** Try to confirm immediately (takes seats). Default: the booking stays PENDING (no seats). */
@@ -51,7 +61,10 @@ export class CreateBookingDto {
   /** With confirm: put the booking on the waiting list instead of failing when the trip is full */
   @IsOptional() @IsBoolean() waitlistIfFull?: boolean;
   /** Optional first cash payment, in the trip currency */
-  @IsOptional() @ValidateNested() @Type(() => InitialPaymentDto) payment?: InitialPaymentDto;
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InitialPaymentDto)
+  payment?: InitialPaymentDto;
 }
 
 export class UpdateBookingDto {
@@ -61,7 +74,13 @@ export class UpdateBookingDto {
    * (seats are held); pending / waiting-list bookings may change it and are re-totalled with
    * their original price snapshot.
    */
-  @IsOptional() @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => PassengerDto) passengers?: PassengerDto[];
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => PassengerDto)
+  passengers?: PassengerDto[];
 }
 
 export class CancelBookingDto {

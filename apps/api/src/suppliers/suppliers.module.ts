@@ -14,10 +14,27 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags, PartialType } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+  PartialType,
+} from '@nestjs/swagger';
 import { SUPPLIER_TYPES } from '@travelos/shared';
 import type { SupplierType } from '@travelos/shared';
-import { IsBoolean, IsDecimal, IsIn, IsISO8601, IsOptional, IsString, IsUUID, Length, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsDecimal,
+  IsIn,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { AuditService } from '../audit-logs/audit.service';
 import type { AuthUser } from '../common/auth.types';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
@@ -67,12 +84,29 @@ export class SuppliersService {
       officeId: officeUser(user).officeId,
       ...(q.type ? { type: q.type } : {}),
       ...(q.active ? { isActive: q.active === 'true' } : {}),
-      ...(q.search ? { OR: [{ name: { contains: q.search, mode: 'insensitive' as const } }, { city: { contains: q.search, mode: 'insensitive' as const } }] } : {}),
+      ...(q.search
+        ? {
+            OR: [
+              { name: { contains: q.search, mode: 'insensitive' as const } },
+              { city: { contains: q.search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.supplier.findMany({
         where,
-        include: { integration: { select: { status: true, kind: true, lastHealthOk: true, lastHealthCheckAt: true } }, _count: { select: { services: true } } },
+        include: {
+          integration: {
+            select: {
+              status: true,
+              kind: true,
+              lastHealthOk: true,
+              lastHealthCheckAt: true,
+            },
+          },
+          _count: { select: { services: true } },
+        },
         orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
         skip: (q.page - 1) * q.pageSize,
         take: q.pageSize,
@@ -98,18 +132,50 @@ export class SuppliersService {
     const supplier = await this.prisma.supplier.findFirst({
       where: { id, officeId },
       include: {
-        integration: { select: { status: true, kind: true, externalSupplierId: true, lastHealthOk: true, lastHealthCheckAt: true, lastError: true } },
+        integration: {
+          select: {
+            status: true,
+            kind: true,
+            externalSupplierId: true,
+            lastHealthOk: true,
+            lastHealthCheckAt: true,
+            lastError: true,
+          },
+        },
         services: {
-          include: { trip: { select: { id: true, code: true, departureDate: true, status: true, confirmedSeats: true, currencyCode: true, tour: { select: { name: true } } } } },
+          include: {
+            trip: {
+              select: {
+                id: true,
+                code: true,
+                departureDate: true,
+                status: true,
+                confirmedSeats: true,
+                currencyCode: true,
+                tour: { select: { name: true } },
+              },
+            },
+          },
           orderBy: { trip: { departureDate: 'desc' } },
         },
-        payments: { orderBy: { paidAt: 'desc' }, include: { trip: { select: { code: true } }, recordedBy: { select: { user: { select: { fullName: true } } } } } },
+        payments: {
+          orderBy: { paidAt: 'desc' },
+          include: {
+            trip: { select: { code: true } },
+            recordedBy: { select: { user: { select: { fullName: true } } } },
+          },
+        },
       },
     });
     if (!supplier) throw new NotFoundException('Supplier not found');
 
     const paidByTrip = new Map<string, ReturnType<typeof D>>();
-    for (const p of supplier.payments) if (p.tripId) paidByTrip.set(p.tripId, (paidByTrip.get(p.tripId) ?? D(0)).add(D(p.amount)));
+    for (const p of supplier.payments)
+      if (p.tripId)
+        paidByTrip.set(
+          p.tripId,
+          (paidByTrip.get(p.tripId) ?? D(0)).add(D(p.amount)),
+        );
 
     const dues = supplier.services
       .filter((s) => s.trip.status !== 'CANCELLED')
@@ -134,7 +200,16 @@ export class SuppliersService {
     const { officeId } = officeUser(user);
     return this.prisma.$transaction(async (tx) => {
       const s = await tx.supplier.create({ data: { ...dto, officeId } });
-      await this.audit.log(user, { action: 'supplier.created', entityType: 'supplier', entityId: s.id, summary: `Added ${dto.type.toLowerCase()} supplier ${dto.name}` }, tx);
+      await this.audit.log(
+        user,
+        {
+          action: 'supplier.created',
+          entityType: 'supplier',
+          entityId: s.id,
+          summary: `Added ${dto.type.toLowerCase()} supplier ${dto.name}`,
+        },
+        tx,
+      );
       return s;
     });
   }
@@ -142,18 +217,33 @@ export class SuppliersService {
   async update(user: AuthUser, id: string, dto: UpdateSupplierDto) {
     const s = await this.owned(user, id);
     if (dto.type && dto.type !== s.type) {
-      const used = await this.prisma.tripService.count({ where: { supplierId: id } });
-      if (used) throw new ConflictException('The type of a supplier used in trips cannot change');
+      const used = await this.prisma.tripService.count({
+        where: { supplierId: id },
+      });
+      if (used)
+        throw new ConflictException(
+          'The type of a supplier used in trips cannot change',
+        );
     }
     return this.prisma.supplier.update({ where: { id }, data: dto });
   }
 
   async remove(user: AuthUser, id: string) {
     const s = await this.owned(user, id);
-    const used = await this.prisma.tripService.count({ where: { supplierId: id } });
-    if (used) throw new ConflictException('This supplier is used in trips. Deactivate it instead.');
+    const used = await this.prisma.tripService.count({
+      where: { supplierId: id },
+    });
+    if (used)
+      throw new ConflictException(
+        'This supplier is used in trips. Deactivate it instead.',
+      );
     await this.prisma.supplier.delete({ where: { id } });
-    await this.audit.log(user, { action: 'supplier.deleted', entityType: 'supplier', entityId: id, summary: `Deleted supplier ${s.name}` });
+    await this.audit.log(user, {
+      action: 'supplier.deleted',
+      entityType: 'supplier',
+      entityId: id,
+      summary: `Deleted supplier ${s.name}`,
+    });
     return { deleted: true };
   }
 
@@ -166,18 +256,47 @@ export class SuppliersService {
     const u = officeUser(user);
     const supplier = await this.owned(user, supplierId);
     const amount = D(dto.amount);
-    if (amount.lte(0)) throw new BadRequestException('Amount must be greater than zero');
+    if (amount.lte(0))
+      throw new BadRequestException('Amount must be greater than zero');
     const currency = dto.currencyCode.toUpperCase();
 
     if (dto.tripId) {
-      const service = await this.prisma.tripService.findFirst({ where: { tripId: dto.tripId, supplierId, officeId: u.officeId }, include: { trip: true } });
-      if (!service) throw new BadRequestException('This supplier does not provide a service on that trip');
-      if (currency !== service.trip.currencyCode) throw new BadRequestException(`Payments for trip ${service.trip.code} must be in ${service.trip.currencyCode}`);
-      const paid = await this.prisma.supplierPayment.aggregate({ where: { tripId: dto.tripId, supplierId }, _sum: { amount: true } });
-      const ceiling = D(service.costPerPerson).mul(service.trip.maxSeats).sub(D(paid._sum.amount));
-      if (amount.gt(ceiling)) throw new BadRequestException(`This would exceed the maximum owed for this trip (${toMoney(ceiling)} ${currency} left)`);
-    } else if (!(await this.prisma.officeCurrency.findUnique({ where: { officeId_currencyCode: { officeId: u.officeId, currencyCode: currency } } }))) {
-      throw new BadRequestException(`The office does not work with ${currency}`);
+      const service = await this.prisma.tripService.findFirst({
+        where: { tripId: dto.tripId, supplierId, officeId: u.officeId },
+        include: { trip: true },
+      });
+      if (!service)
+        throw new BadRequestException(
+          'This supplier does not provide a service on that trip',
+        );
+      if (currency !== service.trip.currencyCode)
+        throw new BadRequestException(
+          `Payments for trip ${service.trip.code} must be in ${service.trip.currencyCode}`,
+        );
+      const paid = await this.prisma.supplierPayment.aggregate({
+        where: { tripId: dto.tripId, supplierId },
+        _sum: { amount: true },
+      });
+      const ceiling = D(service.costPerPerson)
+        .mul(service.trip.maxSeats)
+        .sub(D(paid._sum.amount));
+      if (amount.gt(ceiling))
+        throw new BadRequestException(
+          `This would exceed the maximum owed for this trip (${toMoney(ceiling)} ${currency} left)`,
+        );
+    } else if (
+      !(await this.prisma.officeCurrency.findUnique({
+        where: {
+          officeId_currencyCode: {
+            officeId: u.officeId,
+            currencyCode: currency,
+          },
+        },
+      }))
+    ) {
+      throw new BadRequestException(
+        `The office does not work with ${currency}`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -194,13 +313,25 @@ export class SuppliersService {
           recordedById: u.memberId,
         },
       });
-      await this.audit.log(user, { action: 'supplier.paid', entityType: 'supplier', entityId: supplierId, summary: `Paid ${toMoney(amount)} ${currency} to ${supplier.name}`, metadata: { tripId: dto.tripId } }, tx);
+      await this.audit.log(
+        user,
+        {
+          action: 'supplier.paid',
+          entityType: 'supplier',
+          entityId: supplierId,
+          summary: `Paid ${toMoney(amount)} ${currency} to ${supplier.name}`,
+          metadata: { tripId: dto.tripId },
+        },
+        tx,
+      );
       return payment;
     });
   }
 
   private async owned(user: AuthUser, id: string) {
-    const s = await this.prisma.supplier.findFirst({ where: { id, officeId: officeUser(user).officeId } });
+    const s = await this.prisma.supplier.findFirst({
+      where: { id, officeId: officeUser(user).officeId },
+    });
     if (!s) throw new NotFoundException('Supplier not found');
     return s;
   }
@@ -214,14 +345,20 @@ export class SuppliersController {
 
   @Get()
   @RequirePermissions('suppliers.view')
-  @ApiOperation({ summary: 'Hotels, transport companies and restaurants with integration status (never secrets)' })
+  @ApiOperation({
+    summary:
+      'Hotels, transport companies and restaurants with integration status (never secrets)',
+  })
   list(@CurrentUser() user: AuthUser, @Query() q: SupplierQueryDto) {
     return this.suppliers.list(user, q);
   }
 
   @Get(':id')
   @RequirePermissions('suppliers.view')
-  @ApiOperation({ summary: 'Supplier with trips served, dues (cost × confirmed passengers), paid and remaining' })
+  @ApiOperation({
+    summary:
+      'Supplier with trips served, dues (cost × confirmed passengers), paid and remaining',
+  })
   get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.suppliers.get(user, id);
   }
@@ -234,20 +371,33 @@ export class SuppliersController {
 
   @Patch(':id')
   @RequirePermissions('suppliers.manage')
-  update(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateSupplierDto) {
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSupplierDto,
+  ) {
     return this.suppliers.update(user, id, dto);
   }
 
   @Delete(':id')
   @RequirePermissions('suppliers.manage')
-  remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+  remove(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.suppliers.remove(user, id);
   }
 
   @Post(':id/payments')
   @RequirePermissions('suppliers.pay')
-  @ApiOperation({ summary: 'Record a payment from the office to this supplier' })
-  pay(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SupplierPaymentDto) {
+  @ApiOperation({
+    summary: 'Record a payment from the office to this supplier',
+  })
+  pay(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SupplierPaymentDto,
+  ) {
     return this.suppliers.pay(user, id, dto);
   }
 }

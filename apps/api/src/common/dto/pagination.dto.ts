@@ -1,6 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import type { Paginated } from '@travelos/shared';
 
 export class PaginationQueryDto {
@@ -31,9 +39,23 @@ export class PaginationQueryDto {
   order: 'ASC' | 'DESC' = 'DESC';
 }
 
-export function paginate<T>(data: T[], total: number, page: number, pageSize: number): Paginated<T> {
-  return { data, meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+export function paginate<T>(
+  data: T[],
+  total: number,
+  page: number,
+  pageSize: number,
+): Paginated<T> {
+  return {
+    data,
+    meta: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  };
 }
 
 /** Escape LIKE wildcards in user search input. */
-export const likeTerm = (s: string) => `%${s.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+export const likeTerm = (s: string) =>
+  `%${s.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
