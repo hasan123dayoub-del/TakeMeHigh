@@ -35,4 +35,4 @@ playwright-report/
 test-results/
 
 # Prisma generated client
-src/generated/
+apps/api/src/generated/
