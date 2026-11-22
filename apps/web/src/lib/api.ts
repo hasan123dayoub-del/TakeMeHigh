@@ -1,48 +1,52 @@
 /**
- * Typed fetch wrapper for the TravelOS API.
+ * Typed fetch wrapper for the Safarni API.
  *
  * - Base URL from NEXT_PUBLIC_API_URL (default http://localhost:3001/api).
- * - Sends the bearer token from client storage.
- * - Non-2xx responses throw `ApiError`, mirroring the API's single error shape
+ * - Sends the access token; on 401 it refreshes ONCE (single-flight across concurrent calls) with the
+ *   rotating refresh token and retries the request. If refreshing fails the session is cleared and
+ *   the auth provider sends the user to /login.
+ * - Non-2xx responses throw `ApiError`, mirroring the API's error shape
  *   `{ statusCode, error, message, path, timestamp }`.
- * - A 401 on an authenticated request clears the session and notifies the auth
- *   provider, which redirects to /login.
  *
- * Token storage: localStorage (hackathon trade-off). It survives reloads and is
- * simple, but any XSS on this origin could read it. Production should move to an
- * httpOnly, SameSite=strict cookie set by the API plus CSRF protection.
+ * Token storage: localStorage (hackathon trade-off, documented). Any XSS on this origin could read
+ * it; production should move the refresh token to an httpOnly SameSite cookie set by the API.
  */
 
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api').replace(
-  /\/+$/,
-  '',
-);
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api').replace(/\/+$/, '');
 
-const TOKEN_KEY = 'travelos.token';
+const ACCESS_KEY = 'safarni.access';
+const REFRESH_KEY = 'safarni.refresh';
+
+function read(key: string) {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function write(key: string, value: string | null) {
+  try {
+    if (value === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable (private mode): session lasts for this tab only */
+  }
+}
 
 export const tokenStore = {
-  get(): string | null {
-    if (typeof window === 'undefined') return null;
-    try {
-      return window.localStorage.getItem(TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  },
-  set(token: string) {
-    try {
-      window.localStorage.setItem(TOKEN_KEY, token);
-    } catch {
-      /* storage unavailable (private mode): session lasts for this tab only */
-    }
+  get: () => read(ACCESS_KEY),
+  getRefresh: () => read(REFRESH_KEY),
+  set(accessToken: string, refreshToken?: string) {
+    write(ACCESS_KEY, accessToken);
+    if (refreshToken) write(REFRESH_KEY, refreshToken);
   },
   clear() {
-    try {
-      window.localStorage.removeItem(TOKEN_KEY);
-    } catch {
-      /* ignore */
-    }
+    write(ACCESS_KEY, null);
+    write(REFRESH_KEY, null);
   },
+  /** localStorage keys, for cross-tab `storage` events */
+  keys: [ACCESS_KEY, REFRESH_KEY] as const,
 };
 
 /** The API's error body. `message` is an array for validation errors. */
@@ -62,11 +66,7 @@ export class ApiError extends Error {
   readonly timestamp?: string;
 
   constructor(body: Partial<ApiErrorBody> & { statusCode: number }) {
-    const messages = Array.isArray(body.message)
-      ? body.message
-      : body.message
-        ? [body.message]
-        : ['Something went wrong. Please try again.'];
+    const messages = Array.isArray(body.message) ? body.message : body.message ? [body.message] : ['Something went wrong. Please try again.'];
     super(messages[0]);
     this.name = 'ApiError';
     this.status = body.statusCode;
@@ -82,55 +82,101 @@ export class ApiError extends Error {
   get isForbidden() {
     return this.status === 403;
   }
+  get isNotFound() {
+    return this.status === 404;
+  }
+  get isConflict() {
+    return this.status === 409;
+  }
   get isNetwork() {
     return this.status === 0;
   }
 }
 
-/** Human-readable message for any thrown value (for toasts and inline errors). */
+/** Human-readable message for any thrown value (toasts and inline errors). API messages are shown verbatim. */
 export function errorMessage(err: unknown, fallback = 'Something went wrong. Please try again.') {
   if (err instanceof ApiError) return err.messages.join(' ');
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }
 
-type UnauthorizedListener = () => void;
-const unauthorizedListeners = new Set<UnauthorizedListener>();
+type Listener = () => void;
+const unauthorizedListeners = new Set<Listener>();
+const tokenListeners = new Set<Listener>();
 
-/** Subscribe to "session expired / revoked" events. Returns an unsubscribe fn. */
-export function onUnauthorized(listener: UnauthorizedListener) {
+/** "Session expired / revoked" events. Returns an unsubscribe fn. */
+export function onUnauthorized(listener: Listener) {
   unauthorizedListeners.add(listener);
-  return () => {
-    unauthorizedListeners.delete(listener);
-  };
+  return () => void unauthorizedListeners.delete(listener);
 }
+/** Token changed (login, refresh, logout). */
+export function onTokenChange(listener: Listener) {
+  tokenListeners.add(listener);
+  return () => void tokenListeners.delete(listener);
+}
+export const emitTokenChange = () => tokenListeners.forEach((l) => l());
 
 type Query = Record<string, string | number | boolean | null | undefined>;
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
   query?: Query;
-  /** Skip the bearer token (e.g. login). */
+  /** Skip the bearer token (login, public pages). */
   anonymous?: boolean;
+  /** Return the raw Response (downloads). */
+  raw?: boolean;
 }
 
-function buildUrl(path: string, query?: Query) {
+export function buildUrl(path: string, query?: Query) {
   const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
   if (!query) return url;
   const params = new URLSearchParams();
-  for (const [k, v] of Object.entries(query)) {
-    if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
-  }
+  for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') params.set(k, String(v));
   const qs = params.toString();
   return qs ? `${url}?${qs}` : url;
 }
 
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, query, anonymous, headers, ...init } = options;
+// ------------------------------------------------------------------ refresh (single flight)
+
+let refreshing: Promise<boolean> | null = null;
+
+async function refreshTokens(): Promise<boolean> {
+  const refreshToken = tokenStore.getRefresh();
+  if (!refreshToken) return false;
+  refreshing ??= (async () => {
+    try {
+      const res = await fetch(buildUrl('/auth/refresh'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { accessToken: string; refreshToken: string };
+      tokenStore.set(data.accessToken, data.refreshToken);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setTimeout(() => (refreshing = null), 0);
+    }
+  })();
+  return refreshing;
+}
+
+function sessionEnded() {
+  tokenStore.clear();
+  emitTokenChange();
+  unauthorizedListeners.forEach((l) => l());
+}
+
+// ------------------------------------------------------------------ fetch
+
+export async function apiFetch<T>(path: string, options: RequestOptions = {}, retried = false): Promise<T> {
+  const { body, query, anonymous, raw, headers, ...init } = options;
   const token = anonymous ? null : tokenStore.get();
 
   const h = new Headers(headers);
-  h.set('Accept', 'application/json');
+  h.set('Accept', raw ? '*/*' : 'application/json');
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   if (body !== undefined && !isForm) h.set('Content-Type', 'application/json');
   if (token) h.set('Authorization', `Bearer ${token}`);
@@ -143,13 +189,15 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError({
-      statusCode: 0,
-      error: 'Network Error',
-      message: 'Cannot reach the TravelOS server. Check your connection and try again.',
-    });
+    throw new ApiError({ statusCode: 0, error: 'Network Error', message: 'NETWORK' });
   }
 
+  if (res.status === 401 && token && !retried) {
+    if (await refreshTokens()) return apiFetch<T>(path, options, true);
+    sessionEnded();
+  }
+
+  if (raw && res.ok) return res as unknown as T;
   if (res.status === 204) return undefined as T;
 
   const text = await res.text();
@@ -166,31 +214,32 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     const errBody =
       data && typeof data === 'object' && 'statusCode' in data
         ? (data as ApiErrorBody)
-        : {
-            statusCode: res.status,
-            error: res.statusText,
-            message: typeof data === 'string' ? data : undefined,
-          };
-    const error = new ApiError(errBody);
-    if (error.isUnauthorized && token) {
-      tokenStore.clear();
-      unauthorizedListeners.forEach((l) => l());
-    }
-    throw error;
+        : { statusCode: res.status, error: res.statusText, message: typeof data === 'string' ? data : undefined };
+    throw new ApiError(errBody);
   }
-
   return data as T;
 }
 
+type NoBody = Omit<RequestOptions, 'body' | 'method'>;
+
 export const api = {
-  get: <T>(path: string, options?: Omit<RequestOptions, 'body' | 'method'>) =>
-    apiFetch<T>(path, { ...options, method: 'GET' }),
-  post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body' | 'method'>) =>
-    apiFetch<T>(path, { ...options, method: 'POST', body }),
-  patch: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body' | 'method'>) =>
-    apiFetch<T>(path, { ...options, method: 'PATCH', body }),
-  put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'body' | 'method'>) =>
-    apiFetch<T>(path, { ...options, method: 'PUT', body }),
-  delete: <T>(path: string, options?: Omit<RequestOptions, 'body' | 'method'>) =>
-    apiFetch<T>(path, { ...options, method: 'DELETE' }),
+  get: <T>(path: string, options?: NoBody) => apiFetch<T>(path, { ...options, method: 'GET' }),
+  post: <T>(path: string, body?: unknown, options?: NoBody) => apiFetch<T>(path, { ...options, method: 'POST', body }),
+  patch: <T>(path: string, body?: unknown, options?: NoBody) => apiFetch<T>(path, { ...options, method: 'PATCH', body }),
+  put: <T>(path: string, body?: unknown, options?: NoBody) => apiFetch<T>(path, { ...options, method: 'PUT', body }),
+  delete: <T>(path: string, options?: NoBody) => apiFetch<T>(path, { ...options, method: 'DELETE' }),
+
+  /** Download a file (e.g. Excel report) with auth, then save it in the browser. */
+  async download(path: string, query: Query, fallbackName: string) {
+    const res = await apiFetch<Response>(path, { method: 'GET', query, raw: true });
+    const disposition = res.headers.get('content-disposition') ?? '';
+    const name = /filename="?([^"]+)"?/.exec(disposition)?.[1] ?? fallbackName;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  },
 };

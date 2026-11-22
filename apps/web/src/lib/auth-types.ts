@@ -1,22 +1,30 @@
-import type { Role } from '@travelos/shared';
+import type { Permission, RoleScope } from '@travelos/shared';
 
-export interface Agency {
+export interface OfficeRef {
   id: string;
   name: string;
   slug: string;
-  currency: string;
   logoUrl: string | null;
+  defaultCurrencyCode: string;
+  defaultLocale: 'AR' | 'EN';
 }
 
+/** GET /auth/me and the `user` of POST /auth/login */
 export interface AuthUser {
   id: string;
   fullName: string;
   email: string;
-  role: Role;
-  agency: Agency | null;
+  locale: 'AR' | 'EN';
+  isPlatformAdmin: boolean;
+  office: OfficeRef | null;
+  branch: { id: string; name: string } | null;
+  role: { id: string; name: string; scope: RoleScope } | null;
+  permissions: Permission[];
 }
 
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
+  refreshTokenExpiresAt: string;
   user: AuthUser;
 }

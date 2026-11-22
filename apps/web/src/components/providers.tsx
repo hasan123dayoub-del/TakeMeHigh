@@ -7,6 +7,7 @@ import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ApiError } from '@/lib/api';
 import { AuthProvider } from '@/lib/auth';
+import { LocaleProvider, type Locale } from '@/lib/i18n';
 
 function makeQueryClient() {
   return new QueryClient({
@@ -29,7 +30,7 @@ function ThemedToaster() {
   return (
     <Toaster
       theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-      position="bottom-right"
+      position="bottom-center"
       closeButton
       toastOptions={{
         classNames: {
@@ -56,7 +57,7 @@ const themeScriptProps = {
   suppressHydrationWarning: true,
 } as const;
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children, locale }: { children: ReactNode; locale: Locale }) {
   const [queryClient] = useState(makeQueryClient);
   return (
     <ThemeProvider
@@ -64,15 +65,17 @@ export function Providers({ children }: { children: ReactNode }) {
       defaultTheme="light"
       enableSystem={false}
       disableTransitionOnChange
-      storageKey="travelos.theme"
+      storageKey="safarni.theme"
       scriptProps={themeScriptProps}
     >
+      <LocaleProvider initialLocale={locale}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider delayDuration={250}>{children}</TooltipProvider>
         </AuthProvider>
         <ThemedToaster />
       </QueryClientProvider>
+      </LocaleProvider>
     </ThemeProvider>
   );
 }

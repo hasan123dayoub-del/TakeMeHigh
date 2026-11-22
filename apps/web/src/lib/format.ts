@@ -3,7 +3,10 @@
  * (ISO 4217 code from `useAuth().agency.currency`), never a hard-coded symbol.
  */
 
-const DEFAULT_LOCALE = 'en-GB';
+const DEFAULT_LOCALE = 'ar-SY-u-nu-latn';
+
+/** Display precision per currency (storage is always 2 decimals). */
+const CURRENCY_DIGITS: Record<string, number> = { SYP: 0 };
 const cache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat | Intl.RelativeTimeFormat>();
 
 function memo<T extends Intl.NumberFormat | Intl.DateTimeFormat | Intl.RelativeTimeFormat>(
@@ -48,8 +51,8 @@ export function formatMoney(
         : new Intl.NumberFormat(locale, {
             style: 'currency',
             currency,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+            minimumFractionDigits: CURRENCY_DIGITS[currency] ?? 2,
+            maximumFractionDigits: CURRENCY_DIGITS[currency] ?? 2,
           }),
     );
     return f.format(n);
@@ -150,8 +153,9 @@ export function formatRelative(value: DateInput, now: Date = new Date(), locale 
 }
 
 /** Time-of-day greeting for the dashboard header. */
-export function greeting(now: Date = new Date()) {
+export function greeting(now: Date = new Date(), lang: 'ar' | 'en' = 'ar') {
   const h = now.getHours();
+  if (lang === 'ar') return h < 12 ? 'صباح الخير' : 'مساء الخير';
   if (h < 12) return 'Good morning';
   if (h < 18) return 'Good afternoon';
   return 'Good evening';

@@ -1,7 +1,6 @@
 'use client';
 
-import { ROLE_LABELS } from '@travelos/shared';
-import { Bell, BellOff, Building2, LogOut, Moon, Search, Sun, UserRound } from 'lucide-react';
+import { Building2, Languages, LogOut, MapPin, Moon, Search, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -16,72 +15,65 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useAuth } from '@/lib/auth';
+import { defineMessages, useLocale, useMessages } from '@/lib/i18n';
+import { common } from '@/lib/i18n/common';
 import { cn } from '@/lib/utils';
+
+const m = defineMessages({
+  ar: { search: 'بحث', toggleTheme: 'تبديل المظهر', account: 'حساب', scopeOffice: 'كل الفروع', scopeBranch: 'هذا الفرع فقط' },
+  en: { search: 'Search', toggleTheme: 'Toggle theme', account: 'Account', scopeOffice: 'All branches', scopeBranch: 'This branch only' },
+});
 
 const circle =
   'relative grid size-10 shrink-0 place-items-center rounded-full border border-border bg-surface-raised text-foreground transition-colors hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
 export function SearchButton({ onOpen }: { onOpen: () => void }) {
+  const t = useMessages(m);
   return (
     <Tooltip
       content={
         <span>
-          Search <kbd className="ml-1 opacity-70">Ctrl K</kbd>
+          {t.search} <kbd className="ms-1 opacity-70">Ctrl K</kbd>
         </span>
       }
       side="bottom"
     >
-      <button
-        type="button"
-        onClick={onOpen}
-        className={circle}
-        aria-label="Search"
-        aria-keyshortcuts="Control+K"
-      >
+      <button type="button" onClick={onOpen} className={circle} aria-label={t.search} aria-keyshortcuts="Control+K">
         <Search className="size-4" aria-hidden />
       </button>
     </Tooltip>
   );
 }
 
-export function NotificationsButton() {
+/** Switches Arabic (RTL) ⇄ English (LTR); the whole layout mirrors. */
+export function LanguageToggle({ className }: { className?: string }) {
+  const { locale, setLocale } = useLocale();
+  const c = useMessages(common);
   return (
-    <DropdownMenu>
-      <Tooltip content="Notifications" side="bottom">
-        <DropdownMenuTrigger className={circle} aria-label="Notifications">
-          <Bell className="size-4" aria-hidden />
-        </DropdownMenuTrigger>
-      </Tooltip>
-      <DropdownMenuContent align="end" className="w-80 p-0">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <span className="text-sm font-medium">Notifications</span>
-          <Badge size="sm" tone="neutral">
-            0 new
-          </Badge>
-        </div>
-        <div className="flex flex-col items-center px-6 py-8 text-center">
-          <span className="grid size-11 place-items-center rounded-full bg-accent-soft text-primary">
-            <BellOff className="size-5" aria-hidden />
-          </span>
-          <p className="mt-3 text-sm font-medium">You&apos;re all caught up</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted">
-            Booking confirmations, payment reminders and departure alerts will appear here.
-          </p>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Tooltip content={c.language} side="bottom">
+      <button
+        type="button"
+        onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
+        className={cn(circle, 'w-auto gap-1.5 px-3 text-xs font-semibold', className)}
+        aria-label={`${c.language}: ${c.switchLanguage}`}
+      >
+        <Languages className="size-4" aria-hidden />
+        <span lang={locale === 'ar' ? 'en' : 'ar'}>{locale === 'ar' ? 'EN' : 'ع'}</span>
+      </button>
+    </Tooltip>
   );
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const t = useMessages(m);
   const isDark = resolvedTheme === 'dark';
   return (
-    <Tooltip content="Toggle theme" side="bottom">
+    <Tooltip content={t.toggleTheme} side="bottom">
       <button
         type="button"
         onClick={() => setTheme(isDark ? 'light' : 'dark')}
-        aria-label="Toggle dark mode"
+        aria-label={t.toggleTheme}
         className={cn(
           'grid size-10 shrink-0 place-items-center rounded-full bg-ink text-ink-foreground transition-transform hover:bg-ink-hover active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
           className,
@@ -96,13 +88,15 @@ export function ThemeToggle({ className }: { className?: string }) {
 }
 
 export function UserMenu() {
-  const { user, agency, role, logout } = useAuth();
+  const { user, office, scope, logout } = useAuth();
+  const t = useMessages(m);
+  const c = useMessages(common);
   if (!user) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        aria-label={`Account menu for ${user.fullName}`}
+        aria-label={`${t.account}: ${user.fullName}`}
       >
         <Avatar name={user.fullName} src={null} />
       </DropdownMenuTrigger>
@@ -111,33 +105,35 @@ export function UserMenu() {
           <Avatar name={user.fullName} size="lg" />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{user.fullName}</p>
-            <p className="truncate text-xs text-muted">{user.email}</p>
-            {role && (
+            <p className="truncate text-xs text-muted ltr-nums">{user.email}</p>
+            {user.role && (
               <Badge size="sm" tone="primary" className="mt-1.5">
-                {ROLE_LABELS[role]}
+                {user.role.name} · {scope === 'OFFICE' ? t.scopeOffice : t.scopeBranch}
               </Badge>
             )}
           </div>
         </div>
         <DropdownMenuSeparator />
-        {agency && (
+        {office && (
           <>
-            <DropdownMenuLabel>Agency</DropdownMenuLabel>
-            <div className="flex items-center gap-2.5 px-2.5 pb-2 text-sm">
+            <DropdownMenuLabel>{c.office}</DropdownMenuLabel>
+            <div className="flex items-center gap-2.5 px-2.5 pb-1 text-sm">
               <Building2 className="size-4 text-muted" aria-hidden />
-              <span className="min-w-0 flex-1 truncate">{agency.name}</span>
-              <span className="num text-xs text-muted">{agency.currency}</span>
+              <span className="min-w-0 flex-1 truncate">{office.name}</span>
+              <span className="num text-xs text-muted">{office.defaultCurrencyCode}</span>
             </div>
+            {user.branch && (
+              <div className="flex items-center gap-2.5 px-2.5 pb-2 text-sm">
+                <MapPin className="size-4 text-muted" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">{user.branch.name}</span>
+              </div>
+            )}
             <DropdownMenuSeparator />
           </>
         )}
         <DropdownMenuGroup>
-          <DropdownMenuItem disabled>
-            <UserRound /> Profile
-            <span className="ml-auto text-[11px] text-subtle">Soon</span>
-          </DropdownMenuItem>
           <DropdownMenuItem variant="danger" onSelect={() => logout()}>
-            <LogOut /> Sign out
+            <LogOut className="rtl-flip" /> {c.signOut}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>

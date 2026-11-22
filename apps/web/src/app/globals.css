@@ -35,8 +35,8 @@
   --radius-panel: 32px; /* the glass panel itself */
 
   /* Typography */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-arabic-display), var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
   --tracking-display: 0.12em;
   --tracking-eyebrow: 0.18em;
 
@@ -402,4 +402,27 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* ---------------------------------------------------------------------------
+ * Arabic (RTL)
+ * Letter-spacing breaks the joining of Arabic letters, and Arabic has no case:
+ * neutralise the Cirrus tracking/uppercase treatment for Arabic text.
+ * ------------------------------------------------------------------------- */
+:lang(ar),
+:lang(ar) * {
+  letter-spacing: 0 !important;
+}
+:lang(ar) body {
+  line-height: 1.7;
+}
+/* Phone numbers, codes and amounts stay left-to-right inside Arabic text. */
+.ltr-nums {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+/* Directional icons (arrows, chevrons) point the other way in RTL. */
+[dir='rtl'] .rtl-flip {
+  transform: scaleX(-1);
 }

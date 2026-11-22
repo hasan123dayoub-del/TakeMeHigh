@@ -7,17 +7,56 @@ import { Brand } from '@/components/app-shell/brand';
 import { FullPageLoader } from '@/components/app-shell/full-page-loader';
 import { GlassPanel } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth';
+import { defineMessages, useMessages } from '@/lib/i18n';
+
+const m = defineMessages({
+  ar: {
+    opening: 'جارٍ فتح مساحة العمل',
+    eyebrow: 'مساحة عمل المكتب',
+    titleA: 'أهلاً',
+    titleB: 'بعودتك',
+    lead: 'سجّل الدخول لإدارة البرامج والرحلات والحجوزات والدفعات في مكتبك.',
+    footer: '© 2026 سفرني · نظام تشغيل يومي لمكاتب السياحة',
+    asideEyebrow: 'بدلاً من الدفاتر والواتساب وملفات Word',
+    asideA: 'كل رحلة،',
+    asideB: 'في مكان واحد هادئ',
+    checklist: 'جاهزية الرحلة',
+    ready: 'جاهزة',
+    s1: 'المقاعد مؤكدة', s1m: '38 من 40 راكباً',
+    s2: 'المبالغ محصّلة', s2m: 'وصلت الدفعات النهائية',
+    s3: 'الفندق والبولمان', s3m: 'مستحقات الموردين قيد الدفع',
+    f1: 'الرحلات والمقاعد', f2: 'الزبائن', f3: 'الدفعات والأرباح', f4: 'صلاحيات حسب الدور',
+  },
+  en: {
+    opening: 'Opening your workspace',
+    eyebrow: 'Office workspace',
+    titleA: 'Welcome',
+    titleB: 'back',
+    lead: 'Sign in to manage tours, trips, bookings and payments for your office.',
+    footer: '© 2026 Safarni · The daily operating system for tourism offices',
+    asideEyebrow: 'Instead of notebooks, WhatsApp and Word files',
+    asideA: 'Every departure,',
+    asideB: 'one calm place',
+    checklist: 'Departure checklist',
+    ready: 'Ready',
+    s1: 'Seats confirmed', s1m: '38 of 40 travellers',
+    s2: 'Balances collected', s2m: 'Final payments received',
+    s3: 'Hotel and coach', s3m: 'Supplier dues being paid',
+    f1: 'Trips & seats', f2: 'Customers', f3: 'Payments & profit', f4: 'Role-based access',
+  },
+});
 import { LoginForm } from './login-form';
 
 export function LoginView() {
   const { status } = useAuth();
   const router = useRouter();
+  const t = useMessages(m);
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/dashboard');
   }, [status, router]);
 
-  if (status === 'authenticated') return <FullPageLoader label="Opening your workspace" />;
+  if (status === 'authenticated') return <FullPageLoader label={t.opening} />;
 
   return (
     <div className="min-h-dvh flex-1 bg-canvas p-2 sm:p-4 lg:p-6">
@@ -27,18 +66,18 @@ export function LoginView() {
           <Brand />
           <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col justify-center py-10">
             <p className="text-xs font-medium tracking-[0.22em] text-muted uppercase">
-              Agency workspace
+              {t.eyebrow}
             </p>
             <h1 className="heading-display mt-2 text-[34px] leading-[1.05] sm:text-[44px]">
-              Welcome <strong className="font-medium">back</strong>
+              {t.titleA} <strong className="font-medium">{t.titleB}</strong>
             </h1>
             <p className="mt-3 text-[15px] leading-relaxed text-muted">
-              Sign in to manage trips, bookings and payments for your agency.
+              {t.lead}
             </p>
             <LoginForm />
           </div>
-          <p className="text-center text-xs text-subtle lg:text-left">
-            © 2026 TravelOS · Operations platform for travel agencies
+          <p className="text-center text-xs text-subtle lg:text-start">
+            {t.footer}
           </p>
         </main>
 
@@ -47,16 +86,16 @@ export function LoginView() {
           aria-hidden
           className="relative hidden overflow-hidden rounded-[26px] bg-altitude p-10 lg:flex lg:flex-col xl:p-12"
         >
-          <span className="pointer-events-none absolute -top-24 -right-24 size-[420px] rounded-full bg-white/10" />
-          <span className="pointer-events-none absolute -bottom-40 -left-20 size-[460px] rounded-full border border-white/15" />
-          <span className="pointer-events-none absolute -bottom-28 -left-8 size-[340px] rounded-full border border-white/10" />
+          <span className="pointer-events-none absolute -top-24 -end-24 size-[420px] rounded-full bg-white/10" />
+          <span className="pointer-events-none absolute -bottom-40 -start-20 size-[460px] rounded-full border border-white/15" />
+          <span className="pointer-events-none absolute -bottom-28 -start-8 size-[340px] rounded-full border border-white/10" />
 
           <div className="relative">
             <p className="text-xs font-medium tracking-[0.22em] uppercase opacity-80">
-              Travel agency operations
+              {t.asideEyebrow}
             </p>
             <p className="heading-display mt-3 max-w-md text-[36px] leading-[1.08] xl:text-[46px] 2xl:text-[52px]">
-              Every departure, <strong className="font-medium">one calm place</strong>
+              {t.asideA} <strong className="font-medium">{t.asideB}</strong>
             </p>
           </div>
 
@@ -65,18 +104,18 @@ export function LoginView() {
             <div className="rounded-card bg-white/95 p-5 text-[#111418] shadow-glass backdrop-blur dark:bg-sky-950/70 dark:text-sky-50">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium tracking-[0.16em] text-[#5a6878] uppercase dark:text-sky-300">
-                  Departure checklist
+                  {t.checklist}
                 </span>
                 <span className="rounded-full bg-[#1c1c1e] px-2.5 py-1 text-[11px] font-medium text-white dark:bg-sky-100 dark:text-[#111418]">
-                  Ready
+                  {t.ready}
                 </span>
               </div>
               <ol className="relative mt-4 grid gap-3.5">
-                <span className="absolute top-3 bottom-3 left-[13px] w-0.5 rounded-full bg-linear-to-b from-sky-600 to-sky-300" />
+                <span className="absolute top-3 bottom-3 start-[13px] w-0.5 rounded-full bg-linear-to-b from-sky-600 to-sky-300" />
                 {[
-                  { title: 'Seats confirmed', meta: '38 of 40 travellers', done: true },
-                  { title: 'Balances collected', meta: 'Final payments received', done: true },
-                  { title: 'Hotel and coach', meta: 'Supplier vouchers sent', done: false },
+                  { title: t.s1, meta: t.s1m, done: true },
+                  { title: t.s2, meta: t.s2m, done: true },
+                  { title: t.s3, meta: t.s3m, done: false },
                 ].map((s) => (
                   <li key={s.title} className="relative flex items-center gap-3.5">
                     <span
@@ -105,10 +144,10 @@ export function LoginView() {
 
             <ul className="grid grid-cols-2 gap-3 text-sm">
               {[
-                { icon: MapPin, label: 'Trips & seats' },
-                { icon: Users, label: 'Customers' },
-                { icon: Wallet, label: 'Payments' },
-                { icon: ShieldCheck, label: 'Role-based access' },
+                { icon: MapPin, label: t.f1 },
+                { icon: Users, label: t.f2 },
+                { icon: Wallet, label: t.f3 },
+                { icon: ShieldCheck, label: t.f4 },
               ].map(({ icon: Icon, label }) => (
                 <li
                   key={label}

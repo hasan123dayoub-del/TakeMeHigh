@@ -1,98 +1,81 @@
 'use client';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { can as canRole, type Permission, type Role } from '@travelos/shared';
+import type { Permission } from '@travelos/shared';
 import { useRouter } from 'next/navigation';
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { api, ApiError, onUnauthorized, tokenStore } from './api';
-import type { Agency, AuthUser, LoginResponse } from './auth-types';
+import { api, ApiError, emitTokenChange, onTokenChange, onUnauthorized, tokenStore } from './api';
+import type { AuthUser, LoginResponse, OfficeRef } from './auth-types';
+import { common } from './i18n/common';
+import { useMessages } from './i18n';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'error';
 
 interface AuthContextValue {
   status: AuthStatus;
   user: AuthUser | null;
-  agency: Agency | null;
-  role: Role | null;
+  office: OfficeRef | null;
+  /** OFFICE = sees all branches (Admin); BRANCH = own branch only (Reception) */
+  scope: 'OFFICE' | 'BRANCH' | null;
   /** Error from GET /auth/me other than 401 (e.g. API unreachable). */
   error: ApiError | null;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: (opts?: { redirect?: boolean }) => void;
-  /** Permission check for hiding UI. The API enforces the same rules server-side. */
-  can: (permission: Permission) => boolean;
+  /** Hides UI the role can't use. The API enforces the same permissions. */
+  can: (...permissions: Permission[]) => boolean;
   retry: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ---- token as an external store (no setState-in-effect, SSR-safe) ---------
-const tokenListeners = new Set<() => void>();
-function emitTokenChange() {
-  tokenListeners.forEach((l) => l());
-}
+// ---- access token as an external store (SSR-safe, cross-tab aware) -----------
 function subscribeToken(listener: () => void) {
-  tokenListeners.add(listener);
+  const off = onTokenChange(listener);
   const onStorage = (e: StorageEvent) => {
-    if (e.key === null || e.key === 'travelos.token') listener();
+    if (e.key === null || (tokenStore.keys as readonly string[]).includes(e.key)) listener();
   };
-  window.addEventListener('storage', onStorage); // sign-out in another tab
+  window.addEventListener('storage', onStorage);
   return () => {
-    tokenListeners.delete(listener);
+    off();
     window.removeEventListener('storage', onStorage);
   };
 }
-/** undefined = not known yet (server render / before hydration). */
+/** undefined = unknown yet (server render / before hydration) */
 const getServerToken = () => undefined;
+/** Session identity is the refresh token: the access token rotates every 15 minutes without a re-login. */
+const getSession = () => tokenStore.getRefresh();
 
 export const ME_QUERY_KEY = ['auth', 'me'] as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const token = useSyncExternalStore<string | null | undefined>(
-    subscribeToken,
-    tokenStore.get,
-    getServerToken,
-  );
+  const t = useMessages(common);
+  const session = useSyncExternalStore<string | null | undefined>(subscribeToken, getSession, getServerToken);
 
   const me = useQuery({
-    queryKey: [...ME_QUERY_KEY, token],
+    queryKey: [...ME_QUERY_KEY, session],
     queryFn: () => api.get<AuthUser>('/auth/me'),
-    enabled: !!token,
+    enabled: !!session,
     staleTime: 5 * 60_000,
-    retry: (count, err) =>
-      !(err instanceof ApiError && (err.isUnauthorized || err.isForbidden)) && count < 2,
+    retry: (count, err) => !(err instanceof ApiError && (err.isUnauthorized || err.isForbidden)) && count < 2,
   });
 
-  // Session expired or revoked anywhere in the app -> back to sign-in.
   useEffect(
     () =>
       onUnauthorized(() => {
         queryClient.clear();
-        emitTokenChange();
-        toast.error('Your session has ended', { description: 'Please sign in again to continue.' });
+        toast.error(t.sessionEnded, { description: t.sessionEndedBody });
       }),
-    [queryClient],
+    [queryClient, t],
   );
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await api.post<LoginResponse>(
-        '/auth/login',
-        { email, password },
-        { anonymous: true },
-      );
-      queryClient.setQueryData([...ME_QUERY_KEY, res.accessToken], res.user);
-      tokenStore.set(res.accessToken);
+      const res = await api.post<LoginResponse>('/auth/login', { email, password }, { anonymous: true });
+      tokenStore.set(res.accessToken, res.refreshToken);
+      queryClient.setQueryData([...ME_QUERY_KEY, res.refreshToken], res.user);
       emitTokenChange();
       return res.user;
     },
@@ -101,6 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(
     ({ redirect = true }: { redirect?: boolean } = {}) => {
+      const refreshToken = tokenStore.getRefresh();
+      if (refreshToken) void api.post('/auth/logout', { refreshToken }, { anonymous: true }).catch(() => undefined);
       tokenStore.clear();
       queryClient.clear();
       emitTokenChange();
@@ -112,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(() => {
     let status: AuthStatus;
     let error: ApiError | null = null;
-    if (token === undefined) status = 'loading';
-    else if (token === null) status = 'unauthenticated';
+    if (session === undefined) status = 'loading';
+    else if (session === null) status = 'unauthenticated';
     else if (me.data) status = 'authenticated';
     else if (me.isError) {
       const err = me.error instanceof ApiError ? me.error : new ApiError({ statusCode: 0 });
@@ -122,19 +107,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else status = 'loading';
 
     const user = status === 'authenticated' ? (me.data ?? null) : null;
-    const role = user?.role ?? null;
+    const granted = new Set(user?.permissions ?? []);
     return {
       status,
       user,
-      agency: user?.agency ?? null,
-      role,
+      office: user?.office ?? null,
+      scope: user?.role?.scope ?? null,
       error,
       login,
       logout,
-      can: (permission) => (role ? canRole(role, permission) : false),
+      can: (...permissions) => permissions.every((p) => granted.has(p)),
       retry: () => void me.refetch(),
     };
-  }, [token, me, login, logout]);
+  }, [session, me, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -145,12 +130,12 @@ export function useAuth() {
   return ctx;
 }
 
-/** `const canWrite = useCan('bookings.write')` */
-export function useCan(permission: Permission) {
-  return useAuth().can(permission);
+/** `const canRefund = useCan('refunds.record')` */
+export function useCan(...permissions: Permission[]) {
+  return useAuth().can(...permissions);
 }
 
-/** Agency currency (ISO 4217) for money formatting; USD until the session loads. */
-export function useCurrency() {
-  return useAuth().agency?.currency ?? 'USD';
+/** The office's default currency (each trip/booking still carries its own currency). */
+export function useDefaultCurrency() {
+  return useAuth().office?.defaultCurrencyCode ?? 'SYP';
 }

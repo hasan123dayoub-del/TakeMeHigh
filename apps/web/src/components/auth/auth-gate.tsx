@@ -10,6 +10,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { GlassPanel } from '@/components/ui/card';
 import { errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { defineMessages, useMessages } from '@/lib/i18n';
+
+const m = defineMessages({
+  ar: { failed: 'تعذّر تحميل مساحة العمل', retry: 'إعادة المحاولة', signOut: 'تسجيل الخروج', redirecting: 'جارٍ التحويل إلى تسجيل الدخول', loading: 'جارٍ التحميل' },
+  en: { failed: 'We couldn’t load your workspace', retry: 'Try again', signOut: 'Sign out', redirecting: 'Redirecting to sign in', loading: 'Loading' },
+});
 
 /**
  * Client-side route protection for the (app) group. Nothing protected renders
@@ -19,6 +25,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { status, error, retry, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const t = useMessages(m);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -36,16 +43,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <GlassPanel className="w-full max-w-lg">
           <EmptyState
             icon={CloudOff}
-            title="We couldn't load your workspace"
+            title={t.failed}
             description={errorMessage(error)}
             action={
               <Button onClick={retry}>
-                <RotateCw /> Try again
+                <RotateCw /> {t.retry}
               </Button>
             }
             secondaryAction={
               <Button variant="secondary" onClick={() => logout()}>
-                <LogOut /> Sign out
+                <LogOut className="rtl-flip" /> {t.signOut}
               </Button>
             }
           />
@@ -55,6 +62,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <FullPageLoader label={status === 'unauthenticated' ? 'Redirecting to sign in' : undefined} />
+    <FullPageLoader label={status === 'unauthenticated' ? t.redirecting : t.loading} />
   );
 }

@@ -1,14 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { GlassPanel } from '@/components/ui/card';
-import { useAuth } from '@/lib/auth';
 import { Brand } from './brand';
 import { CommandSearch } from './command-search';
-import { NotificationsButton, SearchButton, ThemeToggle, UserMenu } from './header-actions';
+import { LanguageToggle, SearchButton, ThemeToggle, UserMenu } from './header-actions';
 import { MobileNav } from './mobile-nav';
-import { NAV_ITEMS } from './nav-items';
+import { useNavItems } from './nav-items';
 import { TopNav } from './top-nav';
 
 /**
@@ -16,9 +15,8 @@ import { TopNav } from './top-nav';
  * Navigation items are filtered by the role's permissions (UI only; the API enforces).
  */
 export function AppShell({ children }: { children: ReactNode }) {
-  const { can } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
-  const items = useMemo(() => NAV_ITEMS.filter((i) => !i.permission || can(i.permission)), [can]);
+  const items = useNavItems();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -35,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-dvh flex-1 bg-canvas p-2 sm:p-4 lg:p-6 xl:p-8">
       <a
         href="#main"
-        className="sr-only z-50 rounded-full bg-ink px-4 py-2 text-sm text-ink-foreground focus:not-sr-only focus:fixed focus:top-4 focus:left-4"
+        className="sr-only z-50 rounded-full bg-ink px-4 py-2 text-sm text-ink-foreground focus:not-sr-only focus:fixed focus:top-4 focus:start-4"
       >
         Skip to content
       </a>
@@ -44,18 +42,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <MobileNav items={items} />
           <Link
             href="/dashboard"
-            aria-label="TravelOS dashboard"
-            className="rounded-full pr-1 xl:pr-2"
+            aria-label="Safarni"
+            className="rounded-full pe-1 xl:pe-2"
           >
             <Brand wordmarkClassName="md:max-lg:sr-only" />
           </Link>
           <div className="mx-auto">
             <TopNav items={items} />
           </div>
-          <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:ml-0">
+          <div className="ms-auto flex items-center gap-1.5 sm:gap-2 md:ms-0">
             <SearchButton onOpen={() => setSearchOpen(true)} />
             <span className="hidden sm:contents">
-              <NotificationsButton />
+              <LanguageToggle />
             </span>
             <ThemeToggle />
             <UserMenu />

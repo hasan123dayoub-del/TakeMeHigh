@@ -1,6 +1,5 @@
 'use client';
 
-import { ROLE_LABELS } from '@travelos/shared';
 import { LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -18,6 +17,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { useAuth } from '@/lib/auth';
+import { useLocale } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Brand } from './brand';
 import { isActive, type NavItem } from './nav-items';
@@ -26,7 +26,8 @@ import { isActive, type NavItem } from './nav-items';
 export function MobileNav({ items }: { items: NavItem[] }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { user, role, agency, logout } = useAuth();
+  const { user, office, logout } = useAuth();
+  const { dir } = useLocale();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -36,7 +37,7 @@ export function MobileNav({ items }: { items: NavItem[] }) {
       >
         <Menu className="size-4" aria-hidden />
       </SheetTrigger>
-      <SheetContent side="left" className="gap-0">
+      <SheetContent side={dir === "rtl" ? "right" : "left"} className="gap-0">
         <SheetHeader>
           <SheetTitle asChild>
             <div>
@@ -77,8 +78,8 @@ export function MobileNav({ items }: { items: NavItem[] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{user.fullName}</p>
                 <p className="truncate text-xs text-muted">
-                  {role ? ROLE_LABELS[role] : ''}
-                  {agency ? ` · ${agency.name}` : ''}
+                  {user?.role?.name ?? ''}
+                  {office ? ` · ${office.name}` : ''}
                 </p>
               </div>
             </div>
