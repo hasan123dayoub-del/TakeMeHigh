@@ -1,6 +1,6 @@
 # Demo guide (local only)
 
-These accounts exist only in the local demo database created by `pnpm db:reset`. They are not real credentials.
+These accounts exist only in the local demo database created by `npm run db:reset`. They are not real credentials.
 
 Agency: **Horizon Travel & Tours** (Damascus) · public page slug `horizon-travel`
 
@@ -30,7 +30,7 @@ Dates are relative to the day you run the seed, so departures are always in the 
 ## Reset before presenting
 
 ```powershell
-pnpm db:reset
+npm run db:reset
 ```
 
 ## Suggested 5-minute demo flow

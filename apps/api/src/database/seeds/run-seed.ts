@@ -1,7 +1,7 @@
 /**
  * Seeds the demo agency. Usage:
- *   pnpm db:seed           -> seeds if the demo agency does not exist yet
- *   pnpm db:reset          -> wipes all TravelOS data and seeds again (local demo only)
+ *   npm run db:seed           -> seeds if the demo agency does not exist yet
+ *   npm run db:reset          -> wipes all TravelOS data and seeds again (local demo only)
  */
 import * as bcrypt from 'bcrypt';
 import type { BookingStatus, PaymentMethod } from '@travelos/shared';
@@ -355,7 +355,7 @@ async function main() {
   try {
     const exists = await dataSource.getRepository(Agency).existsBy({ slug: D.AGENCY.slug });
     if (exists && !reset) {
-      console.log('Demo agency already exists. Use "pnpm db:reset" to wipe and reseed.');
+      console.log('Demo agency already exists. Use "npm run db:reset" to wipe and reseed.');
       return;
     }
     const summary = await dataSource.transaction(async (m) => {

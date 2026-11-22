@@ -1,6 +1,6 @@
 /**
  * Creates the TravelOS database on the local MySQL / MariaDB server (XAMPP) if it does not exist.
- * Usage: pnpm db:create
+ * Usage: npm run db:create
  */
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
