@@ -68,6 +68,22 @@ Prerequisites: **Node.js 22+** (with npm) and **XAMPP** (for its MySQL/MariaDB).
 
 Demo sign-in: `owner@demo.travelos.local` / `TravelOS@2026`. Every role's account is listed in [docs/DEMO.md](docs/DEMO.md).
 
+### Troubleshooting: "port 3000 (or 3001) is already in use" (`EADDRINUSE`)
+
+Usually TravelOS is **already running** in another terminal. Check before starting a second copy:
+
+```powershell
+Get-NetTCPConnection -State Listen -LocalPort 3000,3001 | ForEach-Object { Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" | Select-Object ProcessId, CommandLine }
+```
+
+- If the command line points to `...\travelos\...` (next dev / apps\api\dist\main), it is TravelOS. Use it at http://localhost:3000, or stop it with `Ctrl+C` in the terminal that started it.
+- If another application owns the port, don't kill it. Change the ports instead. For example, to use 3100/3101, set these in `.env`:
+  - `API_PORT=3101`
+  - `CORS_ORIGIN=http://localhost:3100`
+  - `NEXT_PUBLIC_API_URL=http://localhost:3101/api`
+
+  Then start the web app with `npm run dev -w @travelos/web -- --port 3100`.
+
 ## Scripts
 
 | Command | Description |
