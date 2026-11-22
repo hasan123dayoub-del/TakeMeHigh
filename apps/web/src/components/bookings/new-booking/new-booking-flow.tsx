@@ -3,7 +3,7 @@
 import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, Eye, Plus, Printer, Tag, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge, StatusBadge } from '@/components/ui/badge';
@@ -52,17 +52,17 @@ export function NewBookingFlow() {
   // ?tripId= / ?customerId= prefill
   const preTrip = useTrip(sp.get('tripId'));
   const preCustomer = useCustomer(sp.get('customerId'));
-  useEffect(() => {
-    if (preTrip.data && preTrip.data.status === 'OPEN' && !trip) {
-      setTrip(preTrip.data);
-      setStep((s) => Math.max(s, 1));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preTrip.data]);
-  useEffect(() => {
-    if (preCustomer.data && !customer) setCustomer(preCustomer.data);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preCustomer.data]);
+  // Adjust state while rendering (React's recommended alternative to setState in an effect).
+  const [prefilled, setPrefilled] = useState({ trip: '', customer: '' });
+  if (preTrip.data && preTrip.data.status === 'OPEN' && !trip && prefilled.trip !== preTrip.data.id) {
+    setPrefilled((p) => ({ ...p, trip: preTrip.data!.id }));
+    setTrip(preTrip.data);
+    setStep((s) => Math.max(s, 1));
+  }
+  if (preCustomer.data && !customer && prefilled.customer !== preCustomer.data.id) {
+    setPrefilled((p) => ({ ...p, customer: preCustomer.data!.id }));
+    setCustomer(preCustomer.data);
+  }
 
   const est = useMemo(() => (trip ? estimateTotal(trip.sellingPricePerPerson, passengers.length, trip.activeOffer) : null), [trip, passengers.length]);
 

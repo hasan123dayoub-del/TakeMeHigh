@@ -10,7 +10,6 @@ import type { Banner } from '@/lib/types/public';
 import { cn } from '@/lib/utils';
 import { OfficeLogo } from './atoms';
 import { brandSurface } from './brand';
-import styles from './marquee.module.css';
 import { fmt, pm } from './messages';
 
 /** Seconds each ad takes to cross one slot; the whole loop scales with the number of ads. */
@@ -34,13 +33,13 @@ export function AdsMarquee({ banners, className, showOffice = true }: { banners:
 
   return (
     <section aria-label={t.adsLabel} className={cn('relative', className)}>
-      <div className={styles.viewport}>
-        <div className={styles.track} data-paused={paused} style={style}>
+      <div className={'sf-marquee-viewport'}>
+        <div className={'sf-marquee-track'} data-paused={paused} style={style}>
           {[0, 1].map((half) =>
             copy.map((b, i) => {
               const clone = half === 1 || i >= banners.length;
               return (
-                <div key={`${half}-${i}-${b.id}`} className={cn(styles.item, clone && styles.clone)} aria-hidden={clone || undefined}>
+                <div key={`${half}-${i}-${b.id}`} className={cn('sf-marquee-item', clone && 'sf-marquee-clone')} aria-hidden={clone || undefined}>
                   <AdCard banner={b} tabbable={!clone} showOffice={showOffice} byLabel={fmt(t.adBy, { office: b.office.name })} />
                 </div>
               );
@@ -54,7 +53,7 @@ export function AdsMarquee({ banners, className, showOffice = true }: { banners:
         aria-label={paused ? t.playAds : t.pauseAds}
         aria-pressed={paused}
         className={cn(
-          styles.motionOnly,
+          'sf-marquee-motion-only',
           'absolute -top-2 end-3 z-10 grid size-8 place-items-center rounded-full border border-border bg-surface-raised text-muted shadow-pop transition-colors hover:text-foreground',
         )}
       >

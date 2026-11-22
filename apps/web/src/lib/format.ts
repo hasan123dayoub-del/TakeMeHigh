@@ -55,7 +55,8 @@ export function formatMoney(
             maximumFractionDigits: CURRENCY_DIGITS[currency] ?? 2,
           }),
     );
-    return f.format(n);
+    // Isolate as LTR so RTL text never reorders "US$ 717.00" into "$US" or moves the sign.
+    return locale.startsWith('ar') ? '⁦' + f.format(n) + '⁩' : f.format(n);
   } catch {
     // Unknown currency code: fall back to a plain number with the code.
     return `${formatNumber(n, { locale, maximumFractionDigits: 2 })} ${currency}`;

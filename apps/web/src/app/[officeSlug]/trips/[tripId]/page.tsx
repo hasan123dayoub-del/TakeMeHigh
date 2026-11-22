@@ -28,10 +28,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 /** `/[officeSlug]/trips/[tripId]`: public trip page with WhatsApp booking. */
 export default async function TripPage({ params }: { params: Params }) {
   const { officeSlug, tripId } = await params;
+  // Fetch first, render after: JSX is never built inside try/catch (errors surface to the boundary).
+  let trip: Awaited<ReturnType<typeof getTripPage>> | null = null;
   try {
-    return <TripView trip={await getTripPage(officeSlug, tripId)} />;
+    trip = await getTripPage(officeSlug, tripId);
   } catch (e) {
     if (e instanceof PublicNotFoundError) notFound();
-    return <PublicError />;
   }
+  if (!trip) return <PublicError />;
+  return <TripView trip={trip} />;
 }

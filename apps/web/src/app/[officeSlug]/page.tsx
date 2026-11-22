@@ -27,10 +27,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 /** `/[officeSlug]`: the office's public page (404 when unknown or disabled). */
 export default async function OfficePage({ params }: { params: Params }) {
   const { officeSlug } = await params;
+  // Fetch first, render after: JSX is never built inside try/catch (errors surface to the boundary).
+  let data: Awaited<ReturnType<typeof getOfficePage>> | null = null;
   try {
-    return <OfficeView data={await getOfficePage(officeSlug)} />;
+    data = await getOfficePage(officeSlug);
   } catch (e) {
     if (e instanceof PublicNotFoundError) notFound();
-    return <PublicError />;
   }
+  if (!data) return <PublicError />;
+  return <OfficeView data={data} />;
 }
