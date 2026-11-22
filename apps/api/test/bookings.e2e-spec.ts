@@ -102,6 +102,21 @@ describe('Bookings, seats and payments (e2e, real MariaDB)', () => {
     expect(rest.body.balance).toBe('0.00');
   });
 
+  it('applies an active offer to the adult price and ignores an expired one', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const active = await createTrip(db, a.agency.id, a.destination.id, { offerPrice: '400.00', offerLabel: 'Early bird' });
+    const expired = await createTrip(db, a.agency.id, a.destination.id, { offerPrice: '400.00', offerEndsAt: yesterday });
+
+    const withOffer = await api().post('/api/bookings').set(auth(agentA)).send({ tripId: active.id, customer: newCustomer(700), adults: 2 }).expect(201);
+    expect(withOffer.body.unitPrice).toBe('400.00');
+    expect(withOffer.body.totalAmount).toBe('800.00');
+
+    const noOffer = await api().post('/api/bookings').set(auth(agentA)).send({ tripId: expired.id, customer: newCustomer(701), adults: 2 }).expect(201);
+    expect(noOffer.body.unitPrice).toBe('500.00');
+
+    await api().patch(`/api/trips/${active.id}`).set(auth(ownerA)).send({ offerPrice: '650.00' }).expect(400);
+  });
+
   it('cancelling releases the seats, reopens a full trip and refunds no more than was paid', async () => {
     const trip = await createTrip(db, a.agency.id, a.destination.id, { capacity: 2 });
     const res = await api()

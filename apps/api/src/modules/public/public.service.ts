@@ -6,6 +6,7 @@ import { Agency } from '../agencies/entities/agency.entity';
 import { BookingsService } from '../bookings/bookings.service';
 import { TripItinerary } from '../trips/entities/trip-itinerary.entity';
 import { Trip } from '../trips/entities/trip.entity';
+import { activeOffer, effectiveAdultPrice } from '../trips/pricing';
 import { BookingRequestDto } from './public.dto';
 
 @Injectable()
@@ -49,6 +50,8 @@ export class PublicService {
       departureLocation: t.departureLocation,
       pricePerPerson: t.pricePerPerson,
       childPrice: t.childPrice,
+      offer: activeOffer(t),
+      currentPrice: effectiveAdultPrice(t),
       coverImageUrl: t.coverImageUrl,
       seatsAvailable: Math.max(0, t.capacity - t.seatsBooked),
       soldOut: t.status === 'FULL' || t.seatsBooked >= t.capacity,

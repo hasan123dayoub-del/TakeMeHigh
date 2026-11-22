@@ -25,8 +25,8 @@
     "migration:show": "typeorm-ts-node-commonjs migration:show -d src/database/data-source.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
     "migration:create": "typeorm-ts-node-commonjs migration:create",
-    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
-    "db:reset": "ts-node -r tsconfig-paths/register src/database/reset.ts",
+    "seed": "ts-node src/database/seeds/run-seed.ts",
+    "db:reset": "ts-node src/database/seeds/run-seed.ts --reset",
     "db:create": "ts-node src/database/create-database.ts"
   },
   "dependencies": {

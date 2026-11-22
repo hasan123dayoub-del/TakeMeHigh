@@ -150,6 +150,8 @@ async function seed(m: EntityManager) {
         departureLocation: t.from, capacity: t.capacity, seatsBooked: 0,
         pricePerPerson: t.price, childPrice: t.child, costPerPerson: t.cost,
         status: t.status, isPublic: t.isPublic,
+        offerPrice: t.offer?.price ?? null, offerLabel: t.offer?.label ?? null,
+        offerEndsAt: t.offer?.endsInDays != null ? isoDate(addDays(today, t.offer.endsInDays)) : null,
         inclusions: ['Accommodation with breakfast', 'Transport throughout', 'Licensed guide', 'Entrance fees'],
         exclusions: ['Personal expenses', 'Travel insurance', 'Optional activities'],
       }),
@@ -253,7 +255,8 @@ async function seed(m: EntityManager) {
         const depositAt = atHour(addDays(createdAt, between(0, 2)), 2);
         payments.push({ amount: toMoney(deposit), isDeposit: true, paidAt: minDate(depositAt, addDays(today, 0)) });
         paid = paid.add(deposit);
-        const settle = isPast || t.offset <= 10 ? rand() > 0.12 : rand() > 0.5;
+        // Most travellers settle before departure; a few near-departure balances stay open (shown as overdue).
+        const settle = isPast ? rand() > 0.12 : t.offset <= 10 ? rand() > 0.4 : rand() > 0.5;
         if (settle) {
           const balance = total.sub(deposit);
           const balanceAt = minDate(addDays(departure, -between(7, 14)), atHour(addDays(today, -between(0, 6)), 4));

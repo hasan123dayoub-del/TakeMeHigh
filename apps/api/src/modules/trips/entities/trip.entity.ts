@@ -58,6 +58,17 @@ export class Trip extends TenantEntity {
   @Column({ ...MONEY_COLUMN, nullable: true, default: null })
   childPrice!: string | null;
 
+  /** Special offer: discounted adult price, valid until offerEndsAt (inclusive). */
+  @Column({ ...MONEY_COLUMN, nullable: true, default: null })
+  offerPrice!: string | null;
+
+  /** Marketing label shown on the public page, e.g. "Early bird" */
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  offerLabel!: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  offerEndsAt!: string | null;
+
   /** Estimated cost per traveller, used for margin reporting. */
   @Column(MONEY_COLUMN)
   costPerPerson!: string;

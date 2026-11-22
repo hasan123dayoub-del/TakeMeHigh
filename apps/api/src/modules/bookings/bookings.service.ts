@@ -19,6 +19,7 @@ import { Customer } from '../customers/entities/customer.entity';
 import { Payment } from '../finance/entities/payment.entity';
 import { Refund } from '../finance/entities/refund.entity';
 import { Trip } from '../trips/entities/trip.entity';
+import { effectiveAdultPrice } from '../trips/pricing';
 import { bookingReference } from './booking-reference';
 import {
   BookingQueryDto,
@@ -175,8 +176,8 @@ export class BookingsService {
 
       const customer = await this.resolveCustomer(m, actor, dto.customerId, dto.customer);
 
-      // Prices always come from the trip on the server, never from the client.
-      const unit = new Decimal(trip.pricePerPerson);
+      // Prices always come from the trip on the server (including any active offer), never from the client.
+      const unit = new Decimal(effectiveAdultPrice(trip));
       const childUnit = new Decimal(trip.childPrice ?? trip.pricePerPerson);
       const subtotal = unit.mul(dto.adults).add(childUnit.mul(children));
       const discount = new Decimal(dto.discount ?? 0);

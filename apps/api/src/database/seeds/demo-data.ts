@@ -66,18 +66,22 @@ export const DESTINATIONS = [
 ];
 
 /** offset = days from today to departure; negative means the trip already happened. */
-export const TRIPS = [
-  { code: 'CAP-01', title: 'Cappadocia Balloon Escape', destination: 'Cappadocia', offset: 9, nights: 4, capacity: 30, price: '890.00', child: '640.00', cost: '610.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus, Al-Abbasiyyin coach station' },
+export const TRIPS: ReadonlyArray<{
+  code: string; title: string; destination: string; offset: number; nights: number; capacity: number;
+  price: string; child: string; cost: string; status: "PUBLISHED" | "FULL" | "COMPLETED" | "DRAFT";
+  isPublic: boolean; from: string; offer?: { price: string; label: string; endsInDays: number | null };
+}> = [
+  { code: 'CAP-01', title: 'Cappadocia Balloon Escape', destination: 'Cappadocia', offset: 9, nights: 4, capacity: 30, price: '890.00', child: '640.00', cost: '610.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus, Al-Abbasiyyin coach station', offer: { price: '790.00', label: 'Last-minute deal', endsInDays: 4 } },
   { code: 'PTR-02', title: 'Petra & Wadi Rum Adventure', destination: 'Petra & Wadi Rum', offset: 16, nights: 3, capacity: 24, price: '540.00', child: '380.00', cost: '360.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus, Al-Abbasiyyin coach station' },
   { code: 'DXB-03', title: 'Dubai Skyline Weekend', destination: 'Dubai', offset: 23, nights: 4, capacity: 20, price: '1150.00', child: '820.00', cost: '840.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus International Airport' },
-  { code: 'IST-04', title: 'Istanbul Bosphorus Discovery', destination: 'Istanbul', offset: 34, nights: 5, capacity: 28, price: '960.00', child: '700.00', cost: '650.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus International Airport' },
-  { code: 'UMR-05', title: 'Umrah Journey: Spring Group', destination: 'Makkah & Madinah', offset: 48, nights: 10, capacity: 40, price: '1450.00', child: '1100.00', cost: '1120.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus International Airport' },
+  { code: 'IST-04', title: 'Istanbul Bosphorus Discovery', destination: 'Istanbul', offset: 34, nights: 5, capacity: 28, price: '960.00', child: '700.00', cost: '650.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus International Airport', offer: { price: '880.00', label: 'Early bird', endsInDays: 12 } },
+  { code: 'UMR-05', title: 'Umrah Journey: Spring Group', destination: 'Makkah & Madinah', offset: 48, nights: 10, capacity: 40, price: '1450.00', child: '1100.00', cost: '1120.00', status: 'PUBLISHED', isPublic: true, from: 'Damascus International Airport', offer: { price: '1350.00', label: 'Family special', endsInDays: null } },
   { code: 'BEY-06', title: 'Beirut & Byblos Coastal Break', destination: 'Beirut & Byblos', offset: 3, nights: 2, capacity: 18, price: '390.00', child: '260.00', cost: '250.00', status: 'FULL', isPublic: true, from: 'Damascus, Al-Sumariyah station' },
   { code: 'CAP-00', title: 'Cappadocia Autumn Colours', destination: 'Cappadocia', offset: -40, nights: 4, capacity: 30, price: '850.00', child: '600.00', cost: '590.00', status: 'COMPLETED', isPublic: false, from: 'Damascus, Al-Abbasiyyin coach station' },
   { code: 'PTR-00', title: 'Petra Heritage Tour', destination: 'Petra & Wadi Rum', offset: -95, nights: 3, capacity: 24, price: '520.00', child: '360.00', cost: '345.00', status: 'COMPLETED', isPublic: false, from: 'Damascus, Al-Abbasiyyin coach station' },
   { code: 'IST-00', title: 'Istanbul Summer Highlights', destination: 'Istanbul', offset: -150, nights: 5, capacity: 26, price: '920.00', child: '680.00', cost: '640.00', status: 'COMPLETED', isPublic: false, from: 'Damascus International Airport' },
   { code: 'DXB-07', title: 'Dubai New Year Celebration', destination: 'Dubai', offset: 62, nights: 4, capacity: 22, price: '1290.00', child: '900.00', cost: '930.00', status: 'DRAFT', isPublic: false, from: 'Damascus International Airport' },
-] as const;
+];
 
 export const ITINERARIES: Record<string, Array<[string, string, string]>> = {
   'CAP-01': [

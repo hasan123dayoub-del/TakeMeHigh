@@ -10,7 +10,8 @@ loadEnv({ path: resolve(__dirname, '../../../../.env'), quiet: true });
 
 export function buildDataSourceOptions(): DataSourceOptions {
   return {
-    type: 'mysql',
+    // XAMPP ships MariaDB; the mariadb driver mode makes schema diffs exact (no false column changes).
+    type: (process.env.DB_TYPE as 'mariadb' | 'mysql' | undefined) ?? 'mariadb',
     host: process.env.DB_HOST ?? 'localhost',
     port: Number(process.env.DB_PORT ?? 3306),
     username: process.env.DB_USER,

@@ -19,6 +19,7 @@ import {
 import { Destination } from './entities/destination.entity';
 import { TripItinerary } from './entities/trip-itinerary.entity';
 import { Trip } from './entities/trip.entity';
+import { activeOffer, effectiveAdultPrice } from './pricing';
 
 const slugify = (s: string) =>
   s
@@ -110,6 +111,7 @@ export class TripsService {
 
   async create(user: AuthUser, dto: CreateTripDto) {
     this.assertDates(dto.departureDate, dto.returnDate);
+    this.assertOffer(dto.pricePerPerson, dto.offerPrice);
     await findOwned(this.destinations, dto.destinationId, user.agencyId, undefined, 'Destination');
 
     const trip = await this.trips.save(
@@ -144,6 +146,10 @@ export class TripsService {
 
       if (dto.destinationId) await findOwned(m.getRepository(Destination), dto.destinationId, user.agencyId, undefined, 'Destination');
       this.assertDates(dto.departureDate ?? trip.departureDate, dto.returnDate ?? trip.returnDate);
+      this.assertOffer(
+        dto.pricePerPerson ?? trip.pricePerPerson,
+        dto.offerPrice === undefined ? trip.offerPrice : dto.offerPrice,
+      );
 
       const capacity = dto.capacity ?? trip.capacity;
       if (capacity < trip.seatsBooked) {
@@ -284,9 +290,17 @@ export class TripsService {
     if (ret < departure) throw new BadRequestException('Return date must be on or after the departure date');
   }
 
+  private assertOffer(price: string, offer?: string | null) {
+    if (offer != null && !(new Decimal(offer).gt(0) && new Decimal(offer).lt(price))) {
+      throw new BadRequestException('The offer price must be above zero and below the normal price');
+    }
+  }
+
   present(t: Trip) {
     return {
       ...t,
+      activeOffer: activeOffer(t),
+      currentPrice: effectiveAdultPrice(t),
       seatsAvailable: t.capacity - t.seatsBooked,
       occupancy: t.capacity ? Math.round((t.seatsBooked / t.capacity) * 100) : 0,
     };

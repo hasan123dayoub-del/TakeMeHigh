@@ -18,6 +18,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
@@ -78,6 +79,25 @@ export class CreateTripDto {
   @IsOptional()
   @IsDecimal(MONEY)
   costPerPerson?: string;
+
+  /** Special offer adult price (must be below pricePerPerson). Send null to remove the offer. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsDecimal(MONEY)
+  offerPrice?: string | null;
+
+  /** e.g. "Early bird", "Family special" */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MaxLength(60)
+  offerLabel?: string | null;
+
+  /** Last day the offer applies (YYYY-MM-DD, inclusive). Empty = until departure. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsDateString({ strict: true })
+  offerEndsAt?: string | null;
 
   @IsOptional()
   @IsIn(TRIP_STATUSES)
