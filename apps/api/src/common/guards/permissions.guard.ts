@@ -26,8 +26,9 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
+    // No decorator: any authenticated user. @RequirePermissions() with no keys: any office member.
     const required = this.reflector.getAllAndOverride<Permission[] | undefined>(PERMISSIONS_KEY, targets);
-    if (!required?.length) return true;
+    if (required === undefined) return true;
 
     if (!user.officeId || !user.memberId) {
       throw new ForbiddenException('This action requires an office account');

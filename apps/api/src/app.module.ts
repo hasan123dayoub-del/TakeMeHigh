@@ -12,6 +12,11 @@ import { validateEnv } from './config/env.validation';
 import { HealthController } from './health.controller';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { OfficesModule } from './offices/offices.module';
+import { BranchesModule } from './branches/branches.module';
+import { EmployeesModule } from './employees/employees.module';
+import { RolesModule } from './roles/roles.module';
+import { PlatformModule } from './platform/platform.module';
 
 @Module({
   imports: [
@@ -25,6 +30,11 @@ import { PrismaModule } from './prisma/prisma.module';
     AuditModule,
     AuthModule,
     IntegrationsModule,
+    PlatformModule,
+    OfficesModule,
+    BranchesModule,
+    EmployeesModule,
+    RolesModule,
   ],
   controllers: [HealthController],
   providers: [
