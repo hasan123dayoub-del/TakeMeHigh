@@ -46,3 +46,7 @@ export function useLocale() {
 export function useMessages<T extends Record<string, string>>(set: MessageSet<T>): T {
   return set[useLocale().locale] as T;
 }
+
+/** Shared words and domain labels, re-exported for convenience. */
+export { common } from './common';
+export { LABELS } from '@travelos/shared';

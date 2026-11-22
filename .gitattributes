@@ -7,3 +7,4 @@
 *.ico binary
 *.pptx binary
 *.pdf binary
+*.cmd text eol=crlf
