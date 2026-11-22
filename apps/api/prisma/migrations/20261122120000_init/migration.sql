@@ -34,6 +34,18 @@ CREATE TYPE "DocumentType" AS ENUM ('NATIONAL_ID', 'PASSPORT', 'FAMILY_BOOK', 'B
 -- CreateEnum
 CREATE TYPE "Locale" AS ENUM ('AR', 'EN');
 
+-- CreateEnum
+CREATE TYPE "IntegrationKind" AS ENUM ('HOTEL', 'TRANSPORT');
+
+-- CreateEnum
+CREATE TYPE "IntegrationStatus" AS ENUM ('NOT_CONFIGURED', 'CONFIGURED', 'ACTIVE', 'DISABLED', 'ERROR');
+
+-- CreateEnum
+CREATE TYPE "ExternalReservationStatus" AS ENUM ('NOT_REQUESTED', 'CHECKING_AVAILABILITY', 'AVAILABLE', 'UNAVAILABLE', 'PENDING', 'CONFIRMED', 'FAILED', 'UNKNOWN', 'CANCELLATION_PENDING', 'CANCELLED', 'CANCELLATION_FAILED');
+
+-- CreateEnum
+CREATE TYPE "IntegrationOperation" AS ENUM ('HEALTH', 'SEARCH', 'DETAILS', 'AVAILABILITY', 'PRICING', 'RESERVE', 'GET_RESERVATION', 'CANCEL');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" UUID NOT NULL,
@@ -474,6 +486,68 @@ CREATE TABLE "refunds" (
 );
 
 -- CreateTable
+CREATE TABLE "supplier_integrations" (
+    "id" UUID NOT NULL,
+    "office_id" UUID NOT NULL,
+    "supplier_id" UUID NOT NULL,
+    "kind" "IntegrationKind" NOT NULL,
+    "status" "IntegrationStatus" NOT NULL DEFAULT 'NOT_CONFIGURED',
+    "external_supplier_id" VARCHAR(120),
+    "base_url" VARCHAR(300),
+    "credential_ref" VARCHAR(120),
+    "capabilities" JSONB,
+    "last_health_check_at" TIMESTAMPTZ(3),
+    "last_health_ok" BOOLEAN,
+    "last_error" VARCHAR(500),
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "supplier_integrations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "external_reservations" (
+    "id" UUID NOT NULL,
+    "office_id" UUID NOT NULL,
+    "booking_id" UUID NOT NULL,
+    "trip_service_id" UUID NOT NULL,
+    "integration_id" UUID NOT NULL,
+    "kind" "IntegrationKind" NOT NULL,
+    "status" "ExternalReservationStatus" NOT NULL DEFAULT 'NOT_REQUESTED',
+    "idempotency_key" VARCHAR(80) NOT NULL,
+    "external_reference" VARCHAR(120),
+    "quantity" SMALLINT NOT NULL,
+    "attempts" SMALLINT NOT NULL DEFAULT 0,
+    "last_error" VARCHAR(500),
+    "details" JSONB,
+    "last_synced_at" TIMESTAMPTZ(3),
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(3) NOT NULL,
+
+    CONSTRAINT "external_reservations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "integration_logs" (
+    "id" UUID NOT NULL,
+    "office_id" UUID NOT NULL,
+    "integration_id" UUID NOT NULL,
+    "external_reservation_id" UUID,
+    "operation" "IntegrationOperation" NOT NULL,
+    "http_method" VARCHAR(8) NOT NULL,
+    "endpoint" VARCHAR(200) NOT NULL,
+    "status_code" SMALLINT,
+    "duration_ms" INTEGER NOT NULL,
+    "success" BOOLEAN NOT NULL,
+    "error_code" VARCHAR(60),
+    "error_message" VARCHAR(500),
+    "correlation_id" VARCHAR(80) NOT NULL,
+    "created_at" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "integration_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "promo_banners" (
     "id" UUID NOT NULL,
     "office_id" UUID NOT NULL,
@@ -644,6 +718,27 @@ CREATE INDEX "refunds_office_id_refunded_at_idx" ON "refunds"("office_id", "refu
 
 -- CreateIndex
 CREATE INDEX "refunds_payment_id_idx" ON "refunds"("payment_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "supplier_integrations_office_id_supplier_id_key" ON "supplier_integrations"("office_id", "supplier_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "supplier_integrations_office_id_id_key" ON "supplier_integrations"("office_id", "id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "external_reservations_idempotency_key_key" ON "external_reservations"("idempotency_key");
+
+-- CreateIndex
+CREATE INDEX "external_reservations_office_id_status_idx" ON "external_reservations"("office_id", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "external_reservations_booking_id_trip_service_id_key" ON "external_reservations"("booking_id", "trip_service_id");
+
+-- CreateIndex
+CREATE INDEX "integration_logs_integration_id_created_at_idx" ON "integration_logs"("integration_id", "created_at");
+
+-- CreateIndex
+CREATE INDEX "integration_logs_office_id_created_at_idx" ON "integration_logs"("office_id", "created_at");
 
 -- CreateIndex
 CREATE INDEX "promo_banners_is_active_starts_at_ends_at_idx" ON "promo_banners"("is_active", "starts_at", "ends_at");
@@ -826,6 +921,33 @@ ALTER TABLE "refunds" ADD CONSTRAINT "refunds_currency_code_fkey" FOREIGN KEY ("
 ALTER TABLE "refunds" ADD CONSTRAINT "refunds_recorded_by_id_fkey" FOREIGN KEY ("recorded_by_id") REFERENCES "office_members"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "supplier_integrations" ADD CONSTRAINT "supplier_integrations_office_id_fkey" FOREIGN KEY ("office_id") REFERENCES "offices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "supplier_integrations" ADD CONSTRAINT "supplier_integrations_office_id_supplier_id_fkey" FOREIGN KEY ("office_id", "supplier_id") REFERENCES "suppliers"("office_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "external_reservations" ADD CONSTRAINT "external_reservations_office_id_fkey" FOREIGN KEY ("office_id") REFERENCES "offices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "external_reservations" ADD CONSTRAINT "external_reservations_office_id_booking_id_fkey" FOREIGN KEY ("office_id", "booking_id") REFERENCES "bookings"("office_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "external_reservations" ADD CONSTRAINT "external_reservations_trip_service_id_fkey" FOREIGN KEY ("trip_service_id") REFERENCES "trip_services"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "external_reservations" ADD CONSTRAINT "external_reservations_office_id_integration_id_fkey" FOREIGN KEY ("office_id", "integration_id") REFERENCES "supplier_integrations"("office_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "integration_logs" ADD CONSTRAINT "integration_logs_office_id_fkey" FOREIGN KEY ("office_id") REFERENCES "offices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "integration_logs" ADD CONSTRAINT "integration_logs_integration_id_fkey" FOREIGN KEY ("integration_id") REFERENCES "supplier_integrations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "integration_logs" ADD CONSTRAINT "integration_logs_external_reservation_id_fkey" FOREIGN KEY ("external_reservation_id") REFERENCES "external_reservations"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "promo_banners" ADD CONSTRAINT "promo_banners_office_id_fkey" FOREIGN KEY ("office_id") REFERENCES "offices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -836,7 +958,6 @@ ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_office_id_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
 -- =====================================================================
 -- Business guards enforced by PostgreSQL itself (second line of defence
 -- behind the services). Prisma does not model CHECK constraints, so they
@@ -868,3 +989,6 @@ ALTER TABLE "supplier_payments" ADD CONSTRAINT "chk_supplier_payments_amount" CH
 -- Tours and banners.
 ALTER TABLE "tours" ADD CONSTRAINT "chk_tours_duration" CHECK ("days" >= 1 AND "nights" >= 0 AND "nights" <= "days");
 ALTER TABLE "promo_banners" ADD CONSTRAINT "chk_promo_banners_period" CHECK ("ends_at" >= "starts_at");
+
+-- External reservations: positive quantity, bounded retries.
+ALTER TABLE "external_reservations" ADD CONSTRAINT "chk_external_reservations" CHECK ("quantity" > 0 AND "attempts" >= 0);

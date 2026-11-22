@@ -86,6 +86,47 @@ enum Locale {
   EN
 }
 
+/// Which external supplier system an integration talks to.
+enum IntegrationKind {
+  HOTEL
+  TRANSPORT
+}
+
+enum IntegrationStatus {
+  NOT_CONFIGURED // manual supplier (no API) — the default, and always the case for restaurants
+  CONFIGURED // settings saved, not verified yet
+  ACTIVE // health check passed
+  DISABLED
+  ERROR // last health check failed
+}
+
+/// External reservation lifecycle. Independent from the internal BookingStatus on purpose:
+/// an internally confirmed booking is NOT automatically confirmed by the hotel or coach company.
+enum ExternalReservationStatus {
+  NOT_REQUESTED
+  CHECKING_AVAILABILITY
+  AVAILABLE
+  UNAVAILABLE
+  PENDING // sent, provider has not confirmed yet
+  CONFIRMED
+  FAILED // provider rejected; safe to retry with a new attempt
+  UNKNOWN // timeout/network error after sending: provider MAY have processed it → reconcile, never blind-retry
+  CANCELLATION_PENDING
+  CANCELLED
+  CANCELLATION_FAILED
+}
+
+enum IntegrationOperation {
+  HEALTH
+  SEARCH
+  DETAILS
+  AVAILABILITY
+  PRICING
+  RESERVE
+  GET_RESERVATION
+  CANCEL
+}
+
 // ------------------------------------------------------------------ identity & organisation
 
 model User {
@@ -136,23 +177,26 @@ model Office {
   createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  defaultCurrency  Currency          @relation(fields: [defaultCurrencyCode], references: [code])
-  branches         Branch[]
-  members          OfficeMember[]
-  roles            Role[]
-  currencies       OfficeCurrency[]
-  tourCategories   TourCategory[]
-  tours            Tour[]
-  trips            Trip[]
-  suppliers        Supplier[]
-  supplierPayments SupplierPayment[]
-  customers        Customer[]
-  bookings         Booking[]
-  payments         Payment[]
-  refunds          Refund[]
-  offers           TripOffer[]
-  banners          PromoBanner[]
-  auditLogs        AuditLog[]
+  defaultCurrency      Currency              @relation(fields: [defaultCurrencyCode], references: [code])
+  branches             Branch[]
+  members              OfficeMember[]
+  roles                Role[]
+  currencies           OfficeCurrency[]
+  tourCategories       TourCategory[]
+  tours                Tour[]
+  trips                Trip[]
+  suppliers            Supplier[]
+  supplierPayments     SupplierPayment[]
+  customers            Customer[]
+  bookings             Booking[]
+  payments             Payment[]
+  refunds              Refund[]
+  offers               TripOffer[]
+  banners              PromoBanner[]
+  auditLogs            AuditLog[]
+  integrations         SupplierIntegration[]
+  externalReservations ExternalReservation[]
+  integrationLogs      IntegrationLog[]
 
   @@map("offices")
 }
@@ -479,9 +523,10 @@ model Supplier {
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office   Office            @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  services TripService[]
-  payments SupplierPayment[]
+  office      Office               @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  services    TripService[]
+  payments    SupplierPayment[]
+  integration SupplierIntegration?
 
   @@unique([officeId, id])
   @@index([officeId, type])
@@ -503,8 +548,9 @@ model TripService {
   createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  trip     Trip     @relation(fields: [officeId, tripId], references: [officeId, id], onDelete: Cascade)
-  supplier Supplier @relation(fields: [officeId, supplierId], references: [officeId, id])
+  trip                 Trip                  @relation(fields: [officeId, tripId], references: [officeId, id], onDelete: Cascade)
+  supplier             Supplier              @relation(fields: [officeId, supplierId], references: [officeId, id])
+  externalReservations ExternalReservation[]
 
   @@unique([tripId, serviceType])
   @@index([supplierId])
@@ -617,17 +663,18 @@ model Booking {
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office     Office             @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  branch     Branch             @relation(fields: [officeId, branchId], references: [officeId, id])
-  trip       Trip               @relation(fields: [officeId, tripId], references: [officeId, id])
-  customer   Customer           @relation(fields: [officeId, customerId], references: [officeId, id])
-  currency   Currency           @relation(fields: [currencyCode], references: [code])
-  offer      TripOffer?         @relation(fields: [offerId], references: [id], onDelete: SetNull)
-  createdBy  OfficeMember       @relation("BookingCreatedBy", fields: [createdById], references: [id])
-  passengers BookingPassenger[]
-  payments   Payment[]
-  refunds    Refund[]
-  events     BookingEvent[]
+  office               Office                @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  branch               Branch                @relation(fields: [officeId, branchId], references: [officeId, id])
+  trip                 Trip                  @relation(fields: [officeId, tripId], references: [officeId, id])
+  customer             Customer              @relation(fields: [officeId, customerId], references: [officeId, id])
+  currency             Currency              @relation(fields: [currencyCode], references: [code])
+  offer                TripOffer?            @relation(fields: [offerId], references: [id], onDelete: SetNull)
+  createdBy            OfficeMember          @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  passengers           BookingPassenger[]
+  externalReservations ExternalReservation[]
+  payments             Payment[]
+  refunds              Refund[]
+  events               BookingEvent[]
 
   @@unique([officeId, reference])
   @@unique([officeId, id])
@@ -731,6 +778,98 @@ model Refund {
   @@index([officeId, refundedAt])
   @@index([paymentId])
   @@map("refunds")
+}
+
+// ------------------------------------------------------------------ external supplier integrations
+// Foundation only: adapters are implemented once the hotel and transport API documentation is
+// available. Secrets are NEVER stored here — only the name of the server-side secret to use.
+
+model SupplierIntegration {
+  id                 String            @id @default(uuid()) @db.Uuid
+  officeId           String            @map("office_id") @db.Uuid
+  supplierId         String            @map("supplier_id") @db.Uuid
+  kind               IntegrationKind
+  status             IntegrationStatus @default(NOT_CONFIGURED)
+  /// The supplier's identifier inside the external system (e.g. hotel id, operator id)
+  externalSupplierId String?           @map("external_supplier_id") @db.VarChar(120)
+  baseUrl            String?           @map("base_url") @db.VarChar(300)
+  /// Name of the server-side secret (env var / vault key) holding the credentials. Never the secret itself.
+  credentialRef      String?           @map("credential_ref") @db.VarChar(120)
+  /// Capabilities confirmed from the provider's documentation (search, availability, reserve, cancel...)
+  capabilities       Json?
+  lastHealthCheckAt  DateTime?         @map("last_health_check_at") @db.Timestamptz(3)
+  lastHealthOk       Boolean?          @map("last_health_ok")
+  lastError          String?           @map("last_error") @db.VarChar(500)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  office       Office                @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  supplier     Supplier              @relation(fields: [officeId, supplierId], references: [officeId, id], onDelete: Cascade)
+  reservations ExternalReservation[]
+  logs         IntegrationLog[]
+
+  @@unique([officeId, supplierId])
+  @@unique([officeId, id])
+  @@map("supplier_integrations")
+}
+
+/// One external reservation per (booking, trip service). Separate from the internal booking.
+model ExternalReservation {
+  id                String                    @id @default(uuid()) @db.Uuid
+  officeId          String                    @map("office_id") @db.Uuid
+  bookingId         String                    @map("booking_id") @db.Uuid
+  tripServiceId     String                    @map("trip_service_id") @db.Uuid
+  integrationId     String                    @map("integration_id") @db.Uuid
+  kind              IntegrationKind
+  status            ExternalReservationStatus @default(NOT_REQUESTED)
+  /// Sent to the provider (when supported) so a repeated request can never create a second reservation
+  idempotencyKey    String                    @unique @map("idempotency_key") @db.VarChar(80)
+  externalReference String?                   @map("external_reference") @db.VarChar(120)
+  quantity          Int                       @db.SmallInt
+  attempts          Int                       @default(0) @db.SmallInt
+  lastError         String?                   @map("last_error") @db.VarChar(500)
+  /// Normalised, non-personal details returned by the provider (room type, seat numbers, price...)
+  details           Json?
+  lastSyncedAt      DateTime?                 @map("last_synced_at") @db.Timestamptz(3)
+  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  office      Office              @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  booking     Booking             @relation(fields: [officeId, bookingId], references: [officeId, id], onDelete: Cascade)
+  tripService TripService         @relation(fields: [tripServiceId], references: [id])
+  integration SupplierIntegration @relation(fields: [officeId, integrationId], references: [officeId, id])
+  logs        IntegrationLog[]
+
+  @@unique([bookingId, tripServiceId])
+  @@index([officeId, status])
+  @@map("external_reservations")
+}
+
+/// Request/response metadata for every external call. No credentials, no passenger data, no bodies.
+model IntegrationLog {
+  id                    String               @id @default(uuid()) @db.Uuid
+  officeId              String               @map("office_id") @db.Uuid
+  integrationId         String               @map("integration_id") @db.Uuid
+  externalReservationId String?              @map("external_reservation_id") @db.Uuid
+  operation             IntegrationOperation
+  httpMethod            String               @map("http_method") @db.VarChar(8)
+  /// Path only, never query strings (they may carry keys)
+  endpoint              String               @db.VarChar(200)
+  statusCode            Int?                 @map("status_code") @db.SmallInt
+  durationMs            Int                  @map("duration_ms")
+  success               Boolean
+  errorCode             String?              @map("error_code") @db.VarChar(60)
+  errorMessage          String?              @map("error_message") @db.VarChar(500)
+  correlationId         String               @map("correlation_id") @db.VarChar(80)
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  office      Office               @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  integration SupplierIntegration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  reservation ExternalReservation? @relation(fields: [externalReservationId], references: [id], onDelete: SetNull)
+
+  @@index([integrationId, createdAt])
+  @@index([officeId, createdAt])
+  @@map("integration_logs")
 }
 
 // ------------------------------------------------------------------ marketing & audit
