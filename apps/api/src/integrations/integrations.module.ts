@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { SupplierAdapterRegistry } from './adapter.registry';
 import { IntegrationHttpClient } from './integration-http.client';
+import { IntegrationsController } from './integrations.controller';
 
 /**
  * Integration foundation shared by the future HotelIntegrationModule and
@@ -8,6 +9,7 @@ import { IntegrationHttpClient } from './integration-http.client';
  */
 @Global()
 @Module({
+  controllers: [IntegrationsController],
   providers: [SupplierAdapterRegistry, IntegrationHttpClient],
   exports: [SupplierAdapterRegistry, IntegrationHttpClient],
 })

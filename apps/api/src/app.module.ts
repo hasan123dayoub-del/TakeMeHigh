@@ -22,6 +22,8 @@ import { TripsModule } from './trips/trips.controller';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { CustomersModule } from './customers/customers.module';
 import { BookingsModule } from './bookings/bookings.controller';
+import { ReportsModule } from './reports/reports.module';
+import { PublicPagesModule } from './public-pages/public-pages.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { BookingsModule } from './bookings/bookings.controller';
     SuppliersModule,
     CustomersModule,
     BookingsModule,
+    ReportsModule,
+    PublicPagesModule,
   ],
   controllers: [HealthController],
   providers: [
