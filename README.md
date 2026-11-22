@@ -39,6 +39,12 @@ Built for the ByteForFuture × AFK Hackathon 2026.
 - **Database:** PostgreSQL 18, with versioned Prisma migrations, 15 CHECK constraints and composite `(office_id, id)` foreign keys.
 - **Quality:** 40 end-to-end tests against the real database, ESLint, Prettier, TypeScript strict.
 
+## Quick start (this machine)
+
+Double-click **`start-safarni.cmd`** in the project folder (or run `powershell -ExecutionPolicy Bypass -File scriptsstart-safarni.ps1`). It starts the local PostgreSQL if needed, applies migrations, loads the demo data on first run and starts the API and web app. Then open http://localhost:3000.
+
+Reset the demo data before presenting with `npm run db:reset` (run it yourself; Prisma asks for confirmation).
+
 ## Getting started (Windows)
 
 Prerequisites: **Node.js 22+** (with npm) and **PostgreSQL** (16+).
