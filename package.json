@@ -8,6 +8,7 @@
     "npm": ">=10"
   },
   "scripts": {
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scriptsstart-safarni.ps1",
     "postinstall": "npm run build -w @travelos/shared",
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @travelos/api\" \"npm run dev -w @travelos/web\"",
     "dev:api": "npm run dev -w @travelos/api",
