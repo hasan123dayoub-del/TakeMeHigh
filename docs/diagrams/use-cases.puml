@@ -1,4 +1,4 @@
-@startuml TravelOS_UseCases
+@startuml Safarni_UseCases
 left to right direction
 skinparam packageStyle rectangle
 skinparam actorStyle awesome
@@ -7,67 +7,59 @@ skinparam usecase {
   BorderColor #3F70AB
 }
 
-actor "Owner" as Owner
-actor "Administrator" as Admin
-actor "Operations Manager" as Ops
-actor "Booking Agent" as Agent
-actor "Accountant" as Acc
-actor "Traveller" as Trav <<external>>
+actor "Admin\n(office scope)" as Admin
+actor "Reception\n(branch scope)" as Rec
+actor "Trip supervisor" as Sup
+actor "Platform admin" as Plat
+actor "Visitor" as Vis <<external>>
+actor "Hotel / transport\nsystem" as Ext <<external, future>>
 
-Admin -|> Owner : <<subset of>>
+Admin -|> Rec : <<can also>>
 
-rectangle "TravelOS" {
-  usecase "Sign in" as UC1
-  usecase "View dashboard" as UC2
-  usecase "Manage trips & offers" as UC3
-  usecase "Plan itinerary" as UC4
-  usecase "Manage suppliers" as UC5
-  usecase "Attach supplier services" as UC6
-  usecase "Create booking" as UC7
-  usecase "Record payment" as UC8
-  usecase "Cancel booking" as UC9
-  usecase "Issue refund" as UC10
-  usecase "Print confirmation" as UC11
-  usecase "Manage customers" as UC12
-  usecase "Record expense" as UC13
-  usecase "View reports" as UC14
-  usecase "Manage team & settings" as UC15
-  usecase "Browse public agency page" as UC16
-  usecase "Request booking online" as UC17
-  usecase "Confirm online request" as UC18
+rectangle "Safarni" {
+  usecase "Sign in / refresh / sign out" as UC1
+  usecase "Onboard & activate office" as UC2
+  usecase "Manage branches, staff & roles" as UC3
+  usecase "Manage tours" as UC4
+  usecase "Schedule trip & price services" as UC5
+  usecase "Manage offers & ads" as UC6
+  usecase "Decide after deadline\n(approve / extend / cancel)" as UC7
+  usecase "Manage customers" as UC8
+  usecase "Create booking with passengers" as UC9
+  usecase "Confirm / waitlist / cancel" as UC10
+  usecase "Transfer booking" as UC11
+  usecase "Cash payment & receipt" as UC12
+  usecase "Refund" as UC13
+  usecase "Supplier payment" as UC14
+  usecase "Dashboard & reports (Excel/PDF)" as UC15
+  usecase "Passenger list & attendance" as UC16
+  usecase "Browse showcase / office page" as UC17
+  usecase "Contact office on WhatsApp" as UC18
+  usecase "External reservation" as UC19
 }
 
-Owner --> UC1
-Owner --> UC2
-Owner --> UC14
-Owner --> UC15
-Owner --> UC10
-Admin --> UC15
-Ops --> UC1
-Ops --> UC3
-Ops --> UC4
-Ops --> UC5
-Ops --> UC6
-Ops --> UC14
-Agent --> UC1
-Agent --> UC2
-Agent --> UC7
-Agent --> UC8
-Agent --> UC9
-Agent --> UC11
-Agent --> UC12
-Agent --> UC18
-Acc --> UC1
-Acc --> UC8
-Acc --> UC10
-Acc --> UC13
-Acc --> UC14
-Trav --> UC16
-Trav --> UC17
+Plat --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC5
+Admin --> UC6
+Admin --> UC7
+Admin --> UC11
+Admin --> UC13
+Admin --> UC14
+Rec --> UC1
+Rec --> UC8
+Rec --> UC9
+Rec --> UC10
+Rec --> UC12
+Rec --> UC15
+Sup --> UC16
+Vis --> UC17
+Vis --> UC18
+UC19 --> Ext
 
-UC7 ..> UC12 : <<include>>
-UC10 ..> UC9 : <<extend>>
-UC17 ..> UC7 : <<include>>
-UC18 ..> UC8 : <<include>>
-UC3 ..> UC4 : <<extend>>
+UC9 ..> UC8 : <<include>>
+UC13 ..> UC10 : <<extend>>
+UC17 ..> UC18 : <<include>>
+UC19 ..> UC10 : <<extend>>
 @enduml

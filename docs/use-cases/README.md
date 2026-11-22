@@ -1,229 +1,178 @@
-# TravelOS use cases
+# Safarni use cases
 
 ## Actors
 
-| Actor | Description | Main goals |
-|---|---|---|
-| **Owner** | Runs the agency; full access | Watch performance, manage team and settings, approve refunds |
-| **Administrator** | Office manager with full operational access (cannot create owners) | Configure agency, manage staff, oversee operations |
-| **Operations Manager** | Plans programs and works with suppliers | Create trips and offers, itineraries, link hotels and transport |
-| **Booking Agent** | Front desk, phone or WhatsApp | Find trips with seats, book customers, take payments |
-| **Accountant** | Finance | Record payments, refunds, expenses; read reports |
-| **Traveller** (external) | Member of the public using the agency's public page | See published trips and offers, request a booking |
-| **System** (secondary) | TravelOS itself | Enforce seats, prices, permissions, tenant isolation, audit trail |
+| Actor | Description |
+|---|---|
+| **Admin** (office scope) | Runs the office: all branches, staff, roles, tours, trips, prices, offers, decisions, suppliers, refunds, profit |
+| **Reception** (branch scope) | Front desk of one branch: customers, bookings, passengers, cash payments, operational reports |
+| **Trip supervisor** (custom role, optional) | Sees assigned trips, the passenger list, records attendance |
+| **Platform admin** | Safarni staff: onboards and (de)activates offices |
+| **Visitor** (external) | Browses the public showcase and office pages; contacts the office on WhatsApp |
+| **System** (secondary) | Enforces seats, prices, scope, currencies; closes registration at the deadline |
+| **Hotel / transport system** (external, future) | Receives reservations once integrated |
 
 ## Use case diagram
 
-The source is in PlantUML: [`../diagrams/use-cases.puml`](../diagrams/use-cases.puml). The Mermaid rendering is below.
+The PlantUML source is in [`../diagrams/use-cases.puml`](../diagrams/use-cases.puml).
 
 ```mermaid
 flowchart LR
-  Owner([Owner]):::actor
-  Admin([Administrator]):::actor
-  Ops([Operations Manager]):::actor
-  Agent([Booking Agent]):::actor
-  Acc([Accountant]):::actor
-  Trav([Traveller]):::ext
+  Admin([Admin]):::actor
+  Rec([Reception]):::actor
+  Sup([Trip supervisor]):::actor
+  Plat([Platform admin]):::actor
+  Vis([Visitor]):::ext
 
-  subgraph TravelOS
-    UC1((Sign in))
-    UC2((View dashboard))
-    UC3((Manage trips & offers))
-    UC4((Plan itinerary))
-    UC5((Manage suppliers))
-    UC6((Attach supplier services to trip))
-    UC7((Create booking))
-    UC8((Record payment))
-    UC9((Cancel booking))
-    UC10((Issue refund))
-    UC11((Print confirmation))
-    UC12((Manage customers))
-    UC13((Record expense))
-    UC14((View reports))
-    UC15((Manage team & settings))
-    UC16((Browse public page))
-    UC17((Request booking online))
-    UC18((Confirm online request))
+  subgraph Safarni
+    UC1((Sign in / refresh / sign out))
+    UC2((Onboard & activate office))
+    UC3((Manage branches, staff & roles))
+    UC4((Manage tours))
+    UC5((Schedule trip & price services))
+    UC6((Manage offers & ads))
+    UC7((Decide after registration deadline))
+    UC8((Manage customers))
+    UC9((Create booking with passengers))
+    UC10((Confirm / waitlist / cancel booking))
+    UC11((Transfer booking))
+    UC12((Record cash payment & print receipt))
+    UC13((Record refund))
+    UC14((Record supplier payment))
+    UC15((View dashboard & reports, export))
+    UC16((Passenger list & attendance))
+    UC17((Browse showcase / office page))
+    UC18((Contact office on WhatsApp))
   end
 
-  Owner --- UC2 & UC14 & UC15 & UC10
-  Admin --- UC15 & UC2
-  Ops --- UC3 & UC4 & UC5 & UC6 & UC14
-  Agent --- UC7 & UC8 & UC9 & UC11 & UC12 & UC18
-  Acc --- UC8 & UC10 & UC13 & UC14
-  Trav --- UC16 & UC17
-  Owner & Admin & Ops & Agent & Acc --- UC1
+  Plat --- UC2
+  Admin --- UC1 & UC3 & UC4 & UC5 & UC6 & UC7 & UC11 & UC13 & UC14 & UC15
+  Rec --- UC1 & UC8 & UC9 & UC10 & UC12 & UC15
+  Sup --- UC16
+  Vis --- UC17 & UC18
 
-  UC7 -. include .-> UC12
-  UC9 -. extend .-> UC10
-  UC17 -. include .-> UC7
-  UC18 -. include .-> UC8
+  UC9 -. include .-> UC8
+  UC10 -. extend .-> UC13
+  UC17 -. include .-> UC18
 
   classDef actor fill:#E3EFFA,stroke:#3F70AB,color:#111418
   classDef ext fill:#FFF4E5,stroke:#B7740A,color:#111418
 ```
 
-The Owner and Administrator can also perform every staff use case. The diagram shows only their distinctive ones.
+The Admin can also do every Reception use case, in all branches.
 
 ---
 
-## UC-01 Sign in
-- **Actors:** all staff
-- **Preconditions:** the user account is active, and so is its agency.
+## UC-5 Schedule a trip and price its services
+- **Actor:** Admin (`trips.manage`)
+- **Preconditions:** an active tour exists; the suppliers are registered.
 - **Main flow:**
-  1. The user enters email and password.
-  2. The system verifies the bcrypt hash and issues an 8-hour JWT carrying the user, agency and role.
-  3. The system shows the dashboard, with navigation filtered by role.
-- **Alternative flows:**
-  - **A1. Wrong credentials or inactive account:** a generic "Invalid email or password" (no hint which part was wrong).
-  - **A2. More than 10 attempts per minute:** 429, try again later.
-- **Postconditions:** the session is active, and `last_login_at` is updated.
+  1. The admin picks a tour, a branch, VIP or Standard, the dates, a currency, the minimum and maximum seats, and the registration deadline.
+  2. The admin adds services: one hotel, one transport and one restaurant at most, each with its net cost per person and a profit %.
+  3. The system computes selling = cost × (1 + %) per service, sums them into the trip price, and saves the trip as DRAFT.
+  4. The admin opens registration.
+- **Alternatives:**
+  - **A1. Two suppliers of the same type:** 400.
+  - **A2. Opening without priced services:** 400.
+  - **A3. Lowering capacity below the confirmed seats:** 409.
+- **Postcondition:** the trip is bookable; if public, it appears on the showcase.
+- **Example:** coach 200,000 SYP at 15%, hotel 450,000 at 20%, restaurant 150,000 at 25% → **957,500 SYP per person**.
 
-## UC-03 Manage trips & offers
-- **Actor:** Operations Manager (also Owner and Admin)
-- **Preconditions:** signed in with `trips.write`.
+## UC-9 Create a booking with passengers ⭐
+- **Actor:** Reception (`bookings.create`), in its own branch
+- **Preconditions:** the trip is OPEN and belongs to the employee's branch.
 - **Main flow:**
-  1. The user creates a trip: code, title, destination, dates, capacity, adult and child prices, cost per person.
-  2. Optionally the user adds an offer: offer price, label, end date.
-  3. The user sets the status to Published and switches on "show on public page".
-  4. The system validates, saves and logs `trip.created`.
-- **Alternative flows:**
-  - **A1. Return date before departure:** 400 with a message.
-  - **A2. Offer price not below the normal price:** 400 (also guarded by `chk_trips_offer`).
-  - **A3. Capacity lowered below seats already booked:** 409 "Capacity cannot be lower than the N seats already booked".
-  - **A4. Delete a trip with bookings:** 409, suggesting Cancelled status instead.
-- **Postconditions:**
-  - The trip is bookable (when Published) and visible on the public page (when public).
-  - The active offer is applied to new bookings automatically.
+  1. The employee selects the trip.
+  2. The employee selects or creates the customer (the contact).
+  3. The employee enters every passenger: name, date of birth, nationality, document type and number.
+  4. The system computes the total from the trip price and the active offer, and freezes the price snapshot.
+  5. Optionally, the employee confirms now (takes seats) and records a first cash payment.
+  6. The system returns the booking reference.
+- **Alternatives:**
+  - **A1. The trip belongs to another branch:** 404.
+  - **A2. Confirming on a full trip:** 409, or the booking goes to the waiting list if requested.
+  - **A3. The phone already belongs to a customer:** that customer is reused.
+- **Postcondition:** a PENDING booking takes no seats; a CONFIRMED one takes them atomically.
 
-## UC-07 Create booking ⭐
-- **Actor:** Booking Agent (also Owner, Admin and Ops)
-- **Preconditions:** signed in with `bookings.write`; the trip is Published and departs in the future.
+## UC-10 Confirm, waitlist or cancel a booking
+- **Actor:** Reception
 - **Main flow:**
-  1. The agent picks a trip, which shows seats left and the current price, including any offer.
-  2. The agent selects an existing customer or enters a new one. The system reuses a customer with the same email or phone.
-  3. The agent enters adults, children, an optional discount, passengers and notes.
-  4. Optionally the agent records a payment now (deposit or full).
-  5. The system, in **one transaction**:
-     - reserves the seats with a conditional update,
-     - computes prices from the trip,
-     - creates the booking, passengers and payment,
-     - writes the activity log.
-  6. The system returns the booking with reference `TOS-YY-XXXXXX`.
-- **Alternative flows:**
-  - **A1. Not enough seats:** 409 "Only 2 seats left on this trip; you requested 3." Nothing is saved.
-  - **A2. Trip full:** 409 "This trip is fully booked."
-  - **A3. Discount above subtotal:** 400.
-  - **A4. The trip belongs to another agency:** 404.
-  - **A5. The payment reaches the deposit %:** the booking is created as Confirmed.
-- **Postconditions:**
-  - `trips.seats_booked` has increased, and the trip becomes FULL when no seats remain.
-  - The dashboard and reports reflect the booking immediately.
+  - **Confirm:** the system locks the booking, takes the seats only if they fit, and records the event.
+  - **Waitlist:** PENDING → WAITING_LIST, no seats.
+  - **Cancel (with a reason):** a confirmed booking releases its seats; payments are kept.
+- **Alternatives:**
+  - **A1. Not enough seats:** 409 "Only N seats left…".
+  - **A2. Already cancelled:** 409.
+- **Extension:** UC-13 refund.
 
-## UC-08 Record payment
-- **Actors:** Booking Agent, Accountant
-- **Preconditions:** the booking is not cancelled and has a balance above 0.
+## UC-11 Transfer a booking
+- **Actor:** Admin (`bookings.transfer`)
 - **Main flow:**
-  1. The user enters amount, method and reference.
-  2. The system locks the booking row, checks amount ≤ balance, inserts the payment and updates `paid_amount` and the payment status.
-  3. If the paid amount reaches the agency's deposit % on a Pending booking, the booking becomes **Confirmed**.
-- **Alternative flows:**
-  - **A1. Amount above the balance:** 400 "Payment exceeds the remaining balance of X".
-  - **A2. Payment date in the future:** 400.
-- **Postconditions:**
-  - The payment status is Partial or Paid.
-  - The revenue KPIs are updated.
+  1. The admin picks an OPEN target trip in the same currency and scope.
+  2. The system re-prices the booking at the target's current price and offer.
+  3. For a confirmed booking, the system moves the seats: it takes them on the target first, then releases the source.
+  4. The system records TRANSFERRED with the old and new prices.
+- **Alternatives:**
+  - **A1. Different currency:** 409.
+  - **A2. The target is full:** 409.
+  - **A3. The new total would be below what was already paid:** 409 (refund first).
+  - **A4. Active external reservations:** 409 (cancel them first).
 
-## UC-09 Cancel booking (extends with UC-10 Issue refund)
-- **Actors:** Booking Agent (cancel), Accountant or Owner (refund)
-- **Preconditions:** the booking is Pending or Confirmed.
+## UC-12 Record a cash payment and print the receipt
+- **Actor:** Reception (`payments.record`)
 - **Main flow:**
-  1. The user gives a reason and optionally a refund amount and method.
-  2. The system, in one transaction:
-     - releases the seats (a FULL trip reopens to Published),
-     - marks the booking Cancelled,
-     - records the refund (≤ paid),
-     - writes the log.
-- **Alternative flows:**
-  - **A1. Already cancelled or completed:** 409.
-  - **A2. Refund above the amount paid:** 400, and the whole cancellation is rolled back.
-- **Postconditions:**
-  - The seats are available again.
-  - The balance is zero, and the payment status is Refunded when money was returned.
+  1. The employee enters the amount (in the booking's currency, at most the balance).
+  2. The system issues a receipt number and updates the paid amount atomically.
+  3. The employee prints the receipt.
+- **Alternatives:**
+  - **A1. Another currency:** 400.
+  - **A2. Above the balance:** 400.
+  - **A3. A cancelled booking:** 409.
 
-## UC-11 Print confirmation
-- **Actor:** Booking Agent
+## UC-13 Record a refund
+- **Actor:** Admin (`refunds.record`)
 - **Main flow:**
-  1. The agent opens the confirmation.
-  2. The system assembles the agency details, trip, passengers, price breakdown, payments, balance and terms.
-  3. The agent prints or saves a PDF.
-- **Postconditions:** the customer receives a professional document instead of a WhatsApp message.
+  1. The admin selects the original payment and enters the amount and reason.
+  2. The system checks the amount against what remains refundable on that payment.
+  3. The system records the refund and updates the payment and the booking.
+- **Alternatives:**
+  - **A1. Above what remains refundable:** 400.
+- **Postcondition:** the original payment stays; refunds are linked to it.
 
-## UC-12 Manage customers
-- **Actors:** Booking Agent (also Owner, Admin and Ops)
-- **Main flow:**
-  1. The agent searches by name, phone or email.
-  2. The agent opens the profile: bookings, payments, outstanding balance, notes.
-  3. The agent edits the details.
-- **Alternative flows:**
-  - **A1. The email or phone already exists:** 409 naming the existing customer.
-  - **A2. Delete a customer with bookings:** 409.
-- **Security:** passport numbers are masked for roles without `customers.write`.
+## UC-7 Decide after the registration deadline
+- **Actor:** Admin (`trips.decide`)
+- **Trigger:** the deadline passes, and the system moves the trip to REGISTRATION_CLOSED.
+- **Main flow:** the admin compares confirmed passengers against the minimum, then:
+  - **APPROVE:** the trip runs.
+  - **EXTEND:** sets a new deadline and reopens registration.
+  - **CANCEL:** all bookings are cancelled, seats are released, payments are kept for refunds.
+- **Postcondition:** the decision is recorded with the counts at the time it was made.
 
-## UC-13 Record expense
-- **Actor:** Accountant
+## UC-14 Record a supplier payment
+- **Actor:** Admin (`suppliers.pay`)
 - **Main flow:**
-  1. The accountant enters a category, description, amount and date.
-  2. Optionally the accountant links the expense to a trip or supplier.
-  3. The system saves it, and it appears in profit and trip profitability.
-- **Alternative flows:**
-  - **A1. Amount ≤ 0:** 400 (also guarded by `chk_expenses_amount`).
+  1. The admin selects a trip the supplier serves; the system shows what is due (cost × confirmed passengers), paid and remaining.
+  2. The admin records the amount in the trip's currency.
+- **Alternatives:**
+  - **A1. Above cost × maximum seats:** 400.
 
-## UC-14 View reports
-- **Actors:** Owner, Admin, Ops, Accountant
+## UC-15 Dashboard, reports and export
+- **Actors:** Admin (all), Reception (operational, own branch)
 - **Main flow:**
-  1. The user picks a period.
-  2. The system shows:
-     - revenue, refunds and expenses by month
-     - trip profitability (actual or estimated cost)
-     - seat utilisation
-     - popular trips
-     - outstanding balances with due dates and overdue flags
-     - booking sources and payment methods
-- **Alternative flows:**
-  - **A1. Booking Agent:** 403. The menu item is hidden.
+  1. The user views the KPIs, upcoming trips and tasks.
+  2. The user opens a report (bookings, upcoming trips, passengers, customer statement, payments*, refunds*, trip profit*).
+  3. The user exports it to Excel or prints it to PDF.
+- **Rules:**
+  - Money is shown per currency.
+  - Financial reports (*) need `reports.financial`.
 
-## UC-15 Manage team & settings
-- **Actors:** Owner, Administrator
+## UC-17 / UC-18 Browse public pages and contact the office ⭐
+- **Actor:** Visitor (no account)
 - **Main flow:**
-  - The user edits the agency profile, deposit %, balance-due days, terms and public page settings.
-  - The user adds team members with a role, and changes their roles or deactivates them.
-- **Alternative flows:**
-  - **A1. An administrator tries to create or modify an owner:** 403.
-  - **A2. Deactivating or demoting the last active owner:** 409.
-  - **A3. Changing your own role or deactivating yourself:** 400.
-
-## UC-16/17 Browse public page and request booking ⭐
-- **Actor:** Traveller (no account)
-- **Preconditions:** the agency has enabled its public page.
-- **Main flow:**
-  1. The traveller opens `/a/{agency}` and sees the agency's branding and its public upcoming trips, with live seats left and offers.
-  2. The traveller opens a trip and reads the itinerary, inclusions and price.
-  3. The traveller submits name, phone, number of travellers and a message.
-  4. The system creates a **Pending** booking (source Public page) that holds the seats, and returns a reference.
-- **Alternative flows:**
-  - **A1. Page disabled or unknown agency:** 404.
-  - **A2. Not enough seats:** 409, and availability is refreshed.
-  - **A3. More than 5 requests per minute:** 429.
-- **Postconditions:**
-  - The request appears instantly in the agency's bookings and dashboard.
-  - No internal data (costs, notes, ids) is exposed.
-
-## UC-18 Confirm online request
-- **Actor:** Booking Agent
-- **Main flow:**
-  1. The agent filters bookings by source Public page and status Pending.
-  2. The agent calls the traveller.
-  3. The agent records the deposit (UC-08), which confirms the booking automatically, or confirms it manually.
-- **Alternative flows:**
-  - **A1. The traveller doesn't answer:** the agent cancels (UC-09), and the seats return to sale.
+  1. The visitor opens the showcase and sees the moving ads.
+  2. The visitor filters by destination, category, date, VIP or Standard, or offers.
+  3. The visitor opens a trip: itinerary, price and offer, seats left, and the office with its location.
+  4. The visitor taps "Book on WhatsApp"; WhatsApp opens to the office with a prefilled message containing the trip.
+- **Alternatives:**
+  - **A1. The office disabled its page:** 404, and its trips leave the showcase.
+- **Postcondition:** no booking record is created; the office books the traveller internally (UC-9).
