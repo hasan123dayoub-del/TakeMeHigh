@@ -1,96 +1,86 @@
-# TravelOS API contract
+# Safarni API
 
-Base URL: `http://localhost:3001/api` · Interactive docs: `http://localhost:3001/api/docs` · Raw OpenAPI: `/api/docs-json`
+- **Base URL:** `http://localhost:3001/api`
+- **Interactive docs:** `/api/docs`
+- **OpenAPI:** `/api/docs-json` (snapshot in [`openapi.json`](openapi.json), 60 paths)
 
-The Swagger page is generated from the code, so it is always the exact contract. This page is the quick map.
+Swagger is generated from the code, so it is the exact contract. This page is the map.
 
 ## Conventions
 
 | Topic | Rule |
 |---|---|
-| Auth | `POST /auth/login` → `accessToken` (JWT, 8h). Send `Authorization: Bearer <token>` on every other call. |
-| Tenancy | The agency always comes from the token. Sending `agencyId` in a body is rejected (400). Records of another agency answer 404. |
-| Money | Strings with 2 decimals, e.g. `"1250.00"`. Never floats. Currency comes from `agency.currency`. |
-| Dates | `YYYY-MM-DD` for calendar dates (trips, expenses); ISO 8601 UTC for timestamps. |
-| Lists | `?page=1&pageSize=20&search=&order=DESC` → `{ data: [...], meta: { page, pageSize, total, totalPages } }` |
-| Errors | `{ statusCode, error, message, path, timestamp }`. `message` is a string or a list of validation messages. |
-| Status codes | 400 validation / business rule · 401 not signed in · 403 role not allowed · 404 not found (or other agency) · 409 conflict (no seats, duplicate, state) · 429 rate limit |
+| Auth | `POST /auth/login` → `{ accessToken (15 min), refreshToken, user }`. Send `Authorization: Bearer <accessToken>`. On 401, call `POST /auth/refresh { refreshToken }` → new pair; the old refresh token stops working. `POST /auth/logout` revokes the session. |
+| Scope | Office and branch come **only** from the token. Unknown body fields (e.g. `officeId`) → 400. Records outside your office or branch scope → **404**. |
+| Money | Decimal strings with 2 decimals (`"957500.00"`). Every trip, booking and payment has its own `currencyCode`. Amounts of different currencies are never summed; totals are grouped per currency. |
+| Dates | `YYYY-MM-DD` for calendar dates; ISO 8601 UTC timestamps. |
+| Lists | `?page&pageSize&search&order=ASC\|DESC` → `{ data, meta: { page, pageSize, total, totalPages } }` |
+| Errors | `{ statusCode, error, message, path, timestamp }`. `message` is human-readable (an array for validation errors). 400 rule · 401 auth · 403 permission · 404 not found/out of scope · 409 conflict (seats, duplicates, state) · 429 rate limit |
 
-## Roles
+## Permissions
 
-| Permission | Owner | Admin | Ops manager | Booking agent | Accountant |
-|---|:-:|:-:|:-:|:-:|:-:|
-| trips.read / bookings.read / customers.read | ✓ | ✓ | ✓ | ✓ | ✓ |
-| trips.write | ✓ | ✓ | ✓ | | |
-| bookings.write / customers.write | ✓ | ✓ | ✓ | ✓ | |
-| payments.write (record a payment) | ✓ | ✓ | | ✓ | ✓ |
-| suppliers.read | ✓ | ✓ | ✓ | | ✓ |
-| suppliers.write | ✓ | ✓ | ✓ | | |
-| finance.read / finance.write (refunds, expenses) | ✓ | ✓ | | | ✓ |
-| reports.read | ✓ | ✓ | ✓ | | ✓ |
-| users.manage / settings.manage | ✓ | ✓ | | | |
+These are the default roles; each office can edit them or add more (`/roles`).
 
-Source of truth: `packages/shared/src/index.ts` (`PERMISSIONS`, `can()`), used by both API and web.
+| Permission | Admin | Reception |
+|---|:-:|:-:|
+| tours.view · trips.view · customers.view/create/edit · bookings.view/create/edit/confirm/cancel · payments.view/record · reports.view | ✓ | ✓ (own branch) |
+| office.manage · branches.manage · employees.manage · roles.manage · audit.view | ✓ | |
+| tours.manage · trips.manage · trips.decide · trips.supervise · offers.manage | ✓ | |
+| suppliers.view/manage/pay · bookings.transfer · refunds.record · reports.financial | ✓ | |
 
 ## Endpoints
 
-### Auth & agency
+### Auth, platform, organisation
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/auth/login` | `{ email, password }` → `{ accessToken, user }`. 10 req/min. |
-| GET | `/auth/me` | Current user + agency |
-| GET / PATCH | `/agency` | Profile + `settings` (public page, deposit %, balance due days, terms) |
-| GET / POST | `/users` | Team members |
-| PATCH | `/users/:id` | Role / active. The last active owner cannot be removed. |
+| POST | `/auth/login` · `/auth/refresh` · `/auth/logout` | 10/min on login, 30/min on refresh |
+| GET | `/auth/me` | user, office, branch, role (scope), permissions |
+| GET · POST · PATCH | `/platform/offices[/:id/status]` | Platform admin: onboard an office (main branch, default roles, first admin), (de)activate |
+| GET · PATCH | `/office` | Profile, WhatsApp, map location, public page, terms, default currency/language |
+| GET · PUT | `/currencies` · `/office/currencies` | Platform currencies; the office's enabled set |
+| GET · POST · PATCH | `/branches[/:id]` | Reception sees its own branch only; (de)activation safeguards |
+| GET · POST · PATCH | `/employees[/:id]` | One branch + one role; access changes end the employee's sessions |
+| GET · POST · PATCH · DELETE | `/roles[/:id]` · GET `/permissions` | Configurable matrix; BRANCH roles can't hold office-wide permissions; the last admin is protected |
 
-### Trips (programs & offers)
+### Programs, trips, pricing
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/trips` | `status`, `destinationId`, `when=upcoming\|past\|all`, `search`. Each trip has `seatsAvailable`, `occupancy`, `activeOffer`, `currentPrice`. |
-| GET | `/trips/options` | Compact list for selects |
-| GET | `/trips/:id` | + `itinerary`, `suppliers` (services with costs), `financials` |
-| POST / PATCH / DELETE | `/trips[/:id]` | Capacity can't go below seats booked (409). Delete only without bookings. Offer: `offerPrice` (< price), `offerLabel`, `offerEndsAt`. |
-| PUT | `/trips/:id/itinerary` | `{ days: [{ dayNumber, title, description, location }] }` |
-| POST / DELETE | `/trips/:id/suppliers[/:tripSupplierId]` | `{ supplierId, service, quantity, unitCost }` |
-| GET / POST | `/destinations` | |
+| CRUD | `/tour-categories` · `/tours` | `PUT /tours/:id/itinerary`, `PUT /tours/:id/images` |
+| GET | `/trips` | `branchId, tourId, status, tripType, when=upcoming\|past\|all, search` |
+| GET | `/trips/:id` | Services, price breakdown, offers, supervisors, decisions, `financials` (expected profit, collected, supplier dues) |
+| POST · PATCH | `/trips[/:id]` | Create from a tour inside one branch; capacity ≥ confirmed seats |
+| PUT | `/trips/:id/services` | One supplier per HOTEL/TRANSPORT/RESTAURANT: `{ costPerPerson, profitPercent }` → selling = cost × (1 + %) |
+| POST | `/trips/:id/open` · `/unpublish` · `/complete` | Status transitions (open needs priced services) |
+| POST | `/trips/:id/decision` | `APPROVE \| EXTEND (newDeadline) \| CANCEL` (cancels all bookings, keeps payments) |
+| PUT | `/trips/:id/supervisors` | |
+| GET · PATCH | `/trips/:id/passengers[/:pid/attendance]` | Manifest of confirmed passengers; attendance by supervisors |
+| GET · POST · PATCH · DELETE | `/trips/:id/offers` · `/offers/:id` | PERCENTAGE or FIXED per person; overlapping active offers → 409 |
 
-### Bookings
+### Suppliers
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/bookings` | `status`, `paymentStatus`, `tripId`, `customerId`, `source`, `search` (reference, name, phone, trip) |
-| GET | `/bookings/:id` | + trip, customer (passport masked), passengers, payments, refunds, `balance` |
-| GET | `/bookings/:id/confirmation` | Data for the printable confirmation |
-| POST | `/bookings` | `{ tripId, customerId \| customer{...}, adults, children?, discount?, passengers?, notes?, specialRequests?, payment?{amount,method}, confirm? }`. Prices computed on the server. **409 when seats run out.** |
-| PATCH | `/bookings/:id` | notes, specialRequests, passengers (count must equal seats) |
-| POST | `/bookings/:id/confirm` | PENDING → CONFIRMED |
-| POST | `/bookings/:id/cancel` | `{ reason, refund?{amount,method} }` releases seats (FULL trip reopens) |
-| POST | `/bookings/:id/payments` | `{ amount, method, reference?, paidAt?, notes? }`. Can't exceed balance. Reaching the deposit % confirms a pending booking. |
-| POST | `/bookings/:id/refunds` | `{ amount, method, reason }`. Can't exceed what was paid. |
+| CRUD | `/suppliers[/:id]` | Detail includes dues per trip: cost × confirmed passengers, paid, remaining |
+| POST | `/suppliers/:id/payments` | Office → supplier payment in the trip's currency, capped at cost × max seats |
+| GET · PUT · POST | `/suppliers/:id/integration[/health]` | Hotel/transport connection settings (secret **name** only); honest health state |
 
-### Customers & suppliers
+### Customers, bookings, payments
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/customers` | With `stats` (bookings, totalSpent, outstanding, lastTrip). Passport masked. |
-| GET | `/customers/:id` | + bookings, payments, stats. Passport visible only to roles with customers.write. |
-| POST / PATCH / DELETE | `/customers[/:id]` | Duplicate email/phone → 409 with the existing name |
-| GET | `/suppliers` | `type=HOTEL\|TRANSPORT\|GUIDE\|OTHER`, with `hotel` / `transport` details and `usage` |
-| GET | `/suppliers/:id` | + services per trip, committed vs paid |
-| POST / PATCH / DELETE | `/suppliers[/:id]` | `hotel{...}` or `transport{...}` details by type |
+| GET · POST · PATCH | `/customers[/:id]` | Unique phone per office (409 names the existing customer); profile with a statement per currency |
+| GET | `/bookings` | `status, tripId, customerId, branchId, search` (reference, customer, phone, passenger) |
+| GET | `/bookings/:id` | Passengers, payments + refunds, history events, external reservation statuses |
+| POST | `/bookings` | `{ tripId, customerId \| customer{…}, passengers[…], confirm?, waitlistIfFull?, payment? }`; prices from the server |
+| PATCH | `/bookings/:id` | Notes / passengers (a confirmed booking keeps its count) |
+| POST | `/bookings/:id/confirm` · `/waitlist` · `/cancel` · `/transfer` | Seats change atomically; transfer needs the same currency and scope |
+| POST | `/bookings/:id/payments` | Cash, `currencyCode` must equal the booking's, ≤ balance |
+| GET | `/payments` · `/payments/:id/receipt` · `/refunds` | |
+| POST | `/payments/:id/refunds` | ≤ what remains refundable on that payment |
 
-### Finance, dashboard, reports
+### Dashboard, reports, public pages, ads
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/finance/summary` | collected, refunded, netRevenue, expenses, profit, outstanding, this month |
-| GET | `/finance/payments` · `/finance/refunds` | `from`, `to`, `method`, `search` |
-| GET / POST / PATCH / DELETE | `/finance/expenses[/:id]` | `category`, `tripId`, `supplierId`, `from`, `to` |
-| GET | `/dashboard` | `kpis`, `upcomingDepartures`, `revenueByMonth` (12 months), `bookingTrend` (weekly), `bookingsByStatus`, `recentActivity` |
-| GET | `/reports?from&to` | `totals`, `revenueByPeriod`, `popularTrips`, `seatUtilization`, `outstandingBalances` (with `dueDate`, `overdue`), `tripProfitability`, `expensesByCategory`, `bookingSources`, `paymentMethods` |
-
-### Public agency page (no auth)
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/public/agencies/:slug` | Agency branding + public upcoming trips with `seatsAvailable`, `offer` |
-| GET | `/public/agencies/:slug/trips/:tripSlug` | + description, inclusions, itinerary |
-| POST | `/public/agencies/:slug/trips/:tripSlug/booking-requests` | `{ firstName, lastName, phone, email?, adults, children?, message? }` → holds seats as a PENDING booking. 5 req/min. |
-
-Demo agency slug: `horizon-travel`.
+| GET | `/dashboard` | KPIs, upcoming trips, tasks, recent bookings; `finance` per currency for `reports.financial` |
+| GET | `/reports/:type` | `bookings`, `upcoming-trips`, `passengers (tripId)`, `customer-statement (customerId)`, `payments*`, `refunds*`, `trip-profit*` (*financial). `format=xlsx&lang=ar\|en` downloads Excel |
+| CRUD | `/banners[/:id]` | Ads for the moving strip (`offers.manage`) |
+| GET | `/public/showcase` | No auth. Published trips of offices with a public page; filters `destination, category, tripType, from, to, offersOnly, search`; `banners`, `facets` |
+| GET | `/public/offices/:slug` · `/public/offices/:slug/trips/:tripId` | Office page (location, branches, trips, ads) and trip page; `whatsappUrl` with a prefilled message |
