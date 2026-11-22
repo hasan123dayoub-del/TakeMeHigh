@@ -1,0 +1,16 @@
+{
+  "name": "@travelos/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared enums, types and constants for TravelOS",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "prepare": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

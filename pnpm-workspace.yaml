@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@swc/core'
+  - bcrypt
+  - sharp
+  - unrs-resolver
+
+ignoredBuiltDependencies:
+  - '@scarf/scarf'
+  - '@parcel/watcher'

@@ -1,0 +1,30 @@
+{
+  "name": "travelos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A modern Travel Agency Operations Management SaaS platform.",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @travelos/api --filter @travelos/web dev",
+    "dev:api": "pnpm --filter @travelos/api dev",
+    "dev:web": "pnpm --filter @travelos/web dev",
+    "build": "pnpm --filter @travelos/shared build && pnpm --filter @travelos/api build && pnpm --filter @travelos/web build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm --filter @travelos/api test",
+    "test:e2e": "pnpm --filter @travelos/api test:e2e",
+    "db:migrate": "pnpm --filter @travelos/api migration:run",
+    "db:revert": "pnpm --filter @travelos/api migration:revert",
+    "db:seed": "pnpm --filter @travelos/api seed",
+    "db:reset": "pnpm --filter @travelos/api db:reset",
+    "format": "prettier --write \"apps/**/src/**/*.{ts,tsx}\" \"packages/**/src/**/*.ts\"",
+    "db:create": "pnpm --filter @travelos/api db:create",
+    "db:setup": "pnpm db:create && pnpm db:migrate && pnpm db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  }
+}
