@@ -6,7 +6,7 @@ import { config as loadEnv } from 'dotenv';
 import { resolve } from 'path';
 import { createConnection } from 'mysql2/promise';
 
-loadEnv({ path: resolve(__dirname, '../../../../.env') });
+loadEnv({ path: resolve(__dirname, '../../../../.env'), quiet: true });
 
 async function main() {
   const name = process.env.DB_NAME ?? 'travelos';

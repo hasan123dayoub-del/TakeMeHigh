@@ -5,8 +5,8 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 import { ENTITIES } from './entities';
 import { SnakeNamingStrategy } from './naming.strategy';
 
-// Single .env at the monorepo root, shared by docker compose, API and web.
-loadEnv({ path: resolve(__dirname, '../../../../.env') });
+// Single .env at the monorepo root, shared by the API, scripts and web.
+loadEnv({ path: resolve(__dirname, '../../../../.env'), quiet: true });
 
 export function buildDataSourceOptions(): DataSourceOptions {
   return {
