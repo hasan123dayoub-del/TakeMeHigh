@@ -1,26 +1,405 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * TravelOS design system: "Cirrus".
+ * Powder-sky canvas, one frosted-glass panel, white pills, ink-black active state.
+ * Every colour used by components is a semantic token defined below; the raw
+ * sky scale is available as `sky-50 … sky-950` for charts and illustrations.
+ * Documentation: docs/design/design-system.md
+ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Dark mode is class-based (next-themes puts `.dark` on <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ------------------------------------------------------------------------ */
+/* Static scales (identical in light and dark)                              */
+/* ------------------------------------------------------------------------ */
+@theme {
+  /* Cirrus sky scale. Replaces Tailwind's default `sky`. */
+  --color-sky-50: #f2f8fd;
+  --color-sky-100: #e3effa;
+  --color-sky-200: #c9ddf3;
+  --color-sky-300: #a9c8ec;
+  --color-sky-400: #7fa7d3;
+  --color-sky-500: #5b8cc4;
+  --color-sky-600: #3f70ab;
+  --color-sky-700: #335a8c;
+  --color-sky-800: #2c4b73;
+  --color-sky-900: #273f5f;
+  --color-sky-950: #18263b;
+
+  /* Radius roles (Tailwind's default xs…3xl stay available) */
+  --radius-field: 14px; /* inputs, selects, small buttons */
+  --radius-tile: 18px; /* inner tiles, popovers, menus */
+  --radius-card: 24px; /* cards inside the glass panel */
+  --radius-panel: 32px; /* the glass panel itself */
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --tracking-display: 0.12em;
+  --tracking-eyebrow: 0.18em;
+
+  /* Motion */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+  --animate-fade-in: fade-in 180ms var(--ease-out-soft);
+  --animate-fade-out: fade-out 140ms ease-in forwards;
+  --animate-pop-in: pop-in 180ms var(--ease-out-soft);
+  --animate-pop-out: pop-out 120ms ease-in forwards;
+  --animate-dialog-in: dialog-in 240ms var(--ease-out-soft);
+  --animate-dialog-out: dialog-out 150ms ease-in forwards;
+  --animate-sheet-in-right: sheet-in-right 320ms var(--ease-out-soft);
+  --animate-sheet-out-right: sheet-out-right 200ms ease-in forwards;
+  --animate-sheet-in-left: sheet-in-left 320ms var(--ease-out-soft);
+  --animate-sheet-out-left: sheet-out-left 200ms ease-in forwards;
+  --animate-sheet-in-bottom: sheet-in-bottom 320ms var(--ease-out-soft);
+  --animate-sheet-out-bottom: sheet-out-bottom 200ms ease-in forwards;
+  --animate-rise: rise 420ms var(--ease-out-soft) both;
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(-4px);
+    }
+  }
+  @keyframes pop-out {
+    to {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -48%) scale(0.97);
+    }
+  }
+  @keyframes dialog-out {
+    to {
+      opacity: 0;
+      transform: translate(-50%, -48%) scale(0.98);
+    }
+  }
+  @keyframes sheet-in-right {
+    from {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes sheet-out-right {
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes sheet-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+  }
+  @keyframes sheet-out-left {
+    to {
+      transform: translateX(-100%);
+    }
+  }
+  @keyframes sheet-in-bottom {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes sheet-out-bottom {
+    to {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ------------------------------------------------------------------------ */
+/* Semantic tokens, light (default)                                         */
+/* ------------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+
+  --canvas:
+    radial-gradient(120% 80% at 0% 0%, #e6f0fa 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, #a9c8ec 0%, transparent 60%),
+    linear-gradient(135deg, #dce9f7 0%, #c9ddf3 48%, #e6f0fa 100%);
+  --background: #f5f9fd;
+  --glass: rgb(255 255 255 / 0.74);
+  --glass-border: rgb(255 255 255 / 0.9);
+  --surface: #f3f6fa; /* cards inside the glass panel */
+  --surface-raised: #ffffff; /* pills, icon buttons, inputs, popovers */
+  --surface-sunken: #eaf0f7; /* table header, skeleton base */
+  --border: #e3ebf4;
+  --border-strong: #c9d7e6;
+  --text: #111418;
+  --text-muted: #5a6878;
+  --text-subtle: #6b7785;
+
+  --primary: #3f70ab; /* sky-600, white text 5.10:1 (AA) */
+  --primary-hover: #335a8c; /* sky-700 */
+  --primary-foreground: #ffffff;
+  --accent: #7fa7d3; /* sky-400, decorative / ink text only */
+  --accent-soft: #e3effa; /* sky-100 */
+  --accent-foreground: #18263b;
+  --ink: #1c1c1e; /* active pill, ink buttons */
+  --ink-hover: #2c2c30;
+  --ink-foreground: #ffffff;
+  --ring: #5b8cc4;
+
+  --success: #2e8a62;
+  --warning: #b7740a;
+  --danger: #c23a3a;
+  --danger-hover: #a52f2f;
+  --danger-foreground: #ffffff;
+  --info: #335a8c;
+  --neutral: #6b7785;
+
+  --chart-1: #335a8c;
+  --chart-2: #5b8cc4;
+  --chart-3: #3aa5d8;
+  --chart-4: #7fa7d3;
+  --chart-5: #b5d3f0;
+  --chart-6: #1c1c1e; /* target / comparison line */
+
+  /* Mid stop is sky-600 (lab: sky-500) so white text keeps AA over the text-bearing half. */
+  --gradient-altitude: linear-gradient(120deg, #335a8c 0%, #3f70ab 55%, #a9c8ec 100%);
+  --gradient-altitude-foreground: #ffffff;
+  --gradient-powder: linear-gradient(135deg, #c9ddf3 0%, #7fa7d3 55%, #3f70ab 100%);
+  --gradient-powder-foreground: #111418;
+
+  --shadow-glass: 0 30px 60px -30px rgb(63 112 171 / 0.45), 0 2px 6px rgb(63 112 171 / 0.08);
+  --shadow-card: 0 1px 2px rgb(17 20 24 / 0.04);
+  --shadow-pop: 0 24px 48px -16px rgb(39 63 95 / 0.28), 0 2px 8px rgb(39 63 95 / 0.08);
+  --shadow-primary: 0 12px 30px -12px rgb(63 112 171 / 0.7);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Semantic tokens, dark ("night altitude")                                 */
+/* ------------------------------------------------------------------------ */
+.dark {
+  color-scheme: dark;
+
+  --canvas:
+    radial-gradient(110% 80% at 0% 0%, #1b3557 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 100%, #16426c 0%, transparent 60%),
+    linear-gradient(160deg, #0b1626 0%, #10233d 50%, #0a1a2e 100%);
+  --background: #121e30;
+  --glass: rgb(18 30 48 / 0.72);
+  --glass-border: rgb(169 200 236 / 0.14);
+  --surface: #19273b;
+  --surface-raised: #1f2f46;
+  --surface-sunken: #152234;
+  --border: #24344b;
+  --border-strong: #33465f;
+  --text: #eaf2fb;
+  --text-muted: #9db0c7;
+  --text-subtle: #8197b0;
+
+  --primary: #7fb4ea;
+  --primary-hover: #a9c8ec;
+  --primary-foreground: #0a1626;
+  --accent: #a9c8ec;
+  --accent-soft: #1d3150;
+  --accent-foreground: #e3effa;
+  --ink: #e3effa;
+  --ink-hover: #ffffff;
+  --ink-foreground: #111418;
+  --ring: #7fb4ea;
+
+  --success: #4cc99a;
+  --warning: #f2c063;
+  --danger: #f08a8a;
+  --danger-hover: #f4a5a5;
+  --danger-foreground: #1a0b0b;
+  --info: #84cbfb;
+  --neutral: #9db0c7;
+
+  --chart-1: #7fb4ea;
+  --chart-2: #4fb0f5;
+  --chart-3: #a9c8ec;
+  --chart-4: #5b8cc4;
+  --chart-5: #d8e9f8;
+  --chart-6: #f5f7fa;
+
+  --gradient-altitude: linear-gradient(120deg, #10233d 0%, #2c4b73 55%, #5b8cc4 100%);
+  --gradient-altitude-foreground: #f2f8fd;
+  --gradient-powder: linear-gradient(135deg, #4fb0f5 0%, #a9c8ec 100%);
+  --gradient-powder-foreground: #0a1626;
+
+  --shadow-glass: 0 30px 60px -30px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(127 180 234 / 0.04);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2);
+  --shadow-pop: 0 24px 48px -16px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(169 200 236 / 0.08);
+  --shadow-primary: 0 12px 30px -12px rgb(127 180 234 / 0.45);
+}
+
+/* Expose semantic tokens as Tailwind utilities (bg-primary, text-muted …). */
+@theme inline {
+  --color-background: var(--background);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-ink: var(--ink);
+  --color-ink-hover: var(--ink-hover);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-neutral: var(--neutral);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+
+  --shadow-glass: var(--shadow-glass);
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-primary: var(--shadow-primary);
+}
+
+/* ------------------------------------------------------------------------ */
+/* Base                                                                     */
+/* ------------------------------------------------------------------------ */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Utilities                                                                */
+/* ------------------------------------------------------------------------ */
+@utility bg-canvas {
+  background: var(--canvas);
+  background-attachment: fixed;
+}
+
+@utility bg-altitude {
+  background-image: var(--gradient-altitude);
+  color: var(--gradient-altitude-foreground);
+}
+
+@utility bg-powder {
+  background-image: var(--gradient-powder);
+  color: var(--gradient-powder-foreground);
+}
+
+/* Frosted-glass material. Keep to one or two layers per screen (GPU cost). */
+@utility glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+}
+
+/* Uppercase light display heading, the Cirrus signature. */
+@utility heading-display {
+  font-family: var(--font-display);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-display);
+}
+
+/* Small uppercase label above titles, table headers, KPI labels. */
+@utility eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--text-muted);
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
