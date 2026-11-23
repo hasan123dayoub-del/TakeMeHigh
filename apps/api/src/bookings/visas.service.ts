@@ -21,8 +21,21 @@ export const visaInclude = {
           bookingNo: true,
           status: true,
           branchId: true,
-          trip: { select: { id: true, code: true, title: true, startsAt: true } },
-          program: { select: { id: true, code: true, title: true, legs: { select: { trip: { select: { startsAt: true } } }, orderBy: { sequenceNo: 'asc' }, take: 1 } } },
+          trip: {
+            select: { id: true, code: true, title: true, startsAt: true },
+          },
+          program: {
+            select: {
+              id: true,
+              code: true,
+              title: true,
+              legs: {
+                select: { trip: { select: { startsAt: true } } },
+                orderBy: { sequenceNo: 'asc' },
+                take: 1,
+              },
+            },
+          },
           offer: { select: { id: true, title: true, validFrom: true } },
         },
       },
@@ -39,14 +52,27 @@ export class VisasService {
   ) {}
 
   async list(user: AuthUser, q: VisaQueryDto) {
-    const settings = await this.prisma.siteSetting.findUnique({ where: { id: 1 } });
-    const horizon = new Date(Date.now() + (settings?.visaWarningDays ?? 14) * 86_400_000);
+    const settings = await this.prisma.siteSetting.findUnique({
+      where: { id: 1 },
+    });
+    const horizon = new Date(
+      Date.now() + (settings?.visaWarningDays ?? 14) * 86_400_000,
+    );
     const where: Prisma.VisaApplicationWhereInput = {
       AND: [
-        { passenger: { booking: { status: { not: 'CANCELLED' }, ...branchOwned(user, q.branchId) } } },
+        {
+          passenger: {
+            booking: {
+              status: { not: 'CANCELLED' },
+              ...branchOwned(user, q.branchId),
+            },
+          },
+        },
         q.status ? { status: q.status } : {},
         q.tripId ? { passenger: { booking: { tripId: q.tripId } } } : {},
-        q.programId ? { passenger: { booking: { programId: q.programId } } } : {},
+        q.programId
+          ? { passenger: { booking: { programId: q.programId } } }
+          : {},
         q.dueSoon
           ? {
               status: { not: 'APPROVED' },
@@ -54,17 +80,41 @@ export class VisasService {
                 booking: {
                   OR: [
                     { trip: { startsAt: { lte: horizon, gte: new Date() } } },
-                    { program: { legs: { some: { sequenceNo: 1, trip: { startsAt: { lte: horizon, gte: new Date() } } } } } },
+                    {
+                      program: {
+                        legs: {
+                          some: {
+                            sequenceNo: 1,
+                            trip: {
+                              startsAt: { lte: horizon, gte: new Date() },
+                            },
+                          },
+                        },
+                      },
+                    },
                   ],
                 },
               },
             }
           : {},
-        q.search ? { OR: [{ passenger: { customer: { fullName: ilike(q.search) } } }, { passenger: { booking: { bookingNo: ilike(q.search) } } }, { visaNumber: ilike(q.search) }] } : {},
+        q.search
+          ? {
+              OR: [
+                { passenger: { customer: { fullName: ilike(q.search) } } },
+                { passenger: { booking: { bookingNo: ilike(q.search) } } },
+                { visaNumber: ilike(q.search) },
+              ],
+            }
+          : {},
       ],
     };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.visaApplication.findMany({ where, include: visaInclude, orderBy: { createdAt: q.order }, ...pageArgs(q) }),
+      this.prisma.visaApplication.findMany({
+        where,
+        include: visaInclude,
+        orderBy: { createdAt: q.order },
+        ...pageArgs(q),
+      }),
       this.prisma.visaApplication.count({ where }),
     ]);
     return paginate(rows, total, q);
@@ -72,7 +122,10 @@ export class VisasService {
 
   /** VIS-02: on approval with a number, the visa is also stored among the customer's documents. */
   async update(user: AuthUser, id: string, dto: UpdateVisaDto) {
-    const visa = await this.prisma.visaApplication.findFirst({ where: { id, passenger: { booking: branchOwned(user) } }, include: visaInclude });
+    const visa = await this.prisma.visaApplication.findFirst({
+      where: { id, passenger: { booking: branchOwned(user) } },
+      include: visaInclude,
+    });
     if (!visa) throw new NotFoundException('Visa record not found');
     const now = new Date();
     return this.prisma.$transaction(async (tx) => {
@@ -84,25 +137,45 @@ export class VisasService {
           expiresOn: dto.expiresOn ? new Date(dto.expiresOn) : undefined,
           fee: dto.fee !== undefined ? toMoney(dto.fee) : undefined,
           notes: dto.notes,
-          submittedAt: dto.status === 'SUBMITTED' && !visa.submittedAt ? now : undefined,
-          decidedAt: dto.status === 'APPROVED' || dto.status === 'REJECTED' ? now : undefined,
+          submittedAt:
+            dto.status === 'SUBMITTED' && !visa.submittedAt ? now : undefined,
+          decidedAt:
+            dto.status === 'APPROVED' || dto.status === 'REJECTED'
+              ? now
+              : undefined,
         },
         include: visaInclude,
       });
       if (updated.status === 'APPROVED' && updated.visaNumber) {
         await tx.customerDocument.upsert({
-          where: { docType_docNumber_issuingCountryId: { docType: 'VISA', docNumber: updated.visaNumber.toUpperCase(), issuingCountryId: updated.country.id } },
-          create: { customerId: updated.passenger.customer.id, docType: 'VISA', docNumber: updated.visaNumber.toUpperCase(), issuingCountryId: updated.country.id, expiresOn: updated.expiresOn },
+          where: {
+            docType_docNumber_issuingCountryId: {
+              docType: 'VISA',
+              docNumber: updated.visaNumber.toUpperCase(),
+              issuingCountryId: updated.country.id,
+            },
+          },
+          create: {
+            customerId: updated.passenger.customer.id,
+            docType: 'VISA',
+            docNumber: updated.visaNumber.toUpperCase(),
+            issuingCountryId: updated.country.id,
+            expiresOn: updated.expiresOn,
+          },
           update: { expiresOn: updated.expiresOn },
         });
       }
-      await this.audit.log(user, {
-        action: 'visa.updated',
-        entityType: 'visa',
-        entityId: id,
-        summary: `Visa of ${visa.passenger.customer.fullName} for ${visa.country.nameEn}: ${updated.status}`,
-        changes: { before: { status: visa.status }, after: dto },
-      }, tx);
+      await this.audit.log(
+        user,
+        {
+          action: 'visa.updated',
+          entityType: 'visa',
+          entityId: id,
+          summary: `Visa of ${visa.passenger.customer.fullName} for ${visa.country.nameEn}: ${updated.status}`,
+          changes: { before: { status: visa.status }, after: dto },
+        },
+        tx,
+      );
       return updated;
     });
   }

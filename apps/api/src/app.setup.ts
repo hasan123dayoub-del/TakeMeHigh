@@ -13,12 +13,19 @@ export function configureApp(app: INestApplication, { swagger = true } = {}) {
   // Public images are embedded by the web app on another origin.
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:3000').split(','),
+    origin: config
+      .get<string>('CORS_ORIGIN', 'http://localhost:3000')
+      .split(','),
     credentials: true,
     exposedHeaders: ['Content-Disposition'],
   });
   mkdirSync(PUBLIC_DIR, { recursive: true });
-  (app as NestExpressApplication).useStaticAssets(PUBLIC_DIR, { prefix: '/uploads/', maxAge: '30d', index: false, dotfiles: 'deny' });
+  (app as NestExpressApplication).useStaticAssets(PUBLIC_DIR, {
+    prefix: '/uploads/',
+    maxAge: '30d',
+    index: false,
+    dotfiles: 'deny',
+  });
   (app as NestExpressApplication).set('trust proxy', 'loopback');
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
@@ -42,10 +49,15 @@ export function configureApp(app: INestApplication, { swagger = true } = {}) {
       .setVersion('1.0.0')
       .addBearerAuth()
       .build();
-    SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, doc), {
-      swaggerOptions: { persistAuthorization: true },
-      customSiteTitle: 'TakeMeHigh API docs',
-    });
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(app, doc),
+      {
+        swaggerOptions: { persistAuthorization: true },
+        customSiteTitle: 'TakeMeHigh API docs',
+      },
+    );
   }
   return app;
 }

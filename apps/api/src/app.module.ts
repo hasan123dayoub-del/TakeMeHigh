@@ -35,7 +35,11 @@ import { UsersModule } from './users/users.module';
       envFilePath: resolve(__dirname, '../../../.env'),
       validate: validateEnv,
     }),
-    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: 'default', ttl: 60_000, limit: 300 }],
+      // the e2e suite signs in dozens of times from one address
+      skipIf: () => process.env.DISABLE_THROTTLE === 'true',
+    }),
     ScheduleModule.forRoot(),
     PrismaModule,
     ExportModule,

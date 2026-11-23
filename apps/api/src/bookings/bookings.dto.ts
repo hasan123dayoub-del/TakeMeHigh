@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { BOOKING_STATUSES, PAYMENT_KINDS, VISA_STATUSES, type BookingStatus, type PaymentKind, type VisaStatus } from '@travelos/shared';
+import {
+  BOOKING_STATUSES,
+  PAYMENT_KINDS,
+  VISA_STATUSES,
+  type BookingStatus,
+  type PaymentKind,
+  type VisaStatus,
+} from '@travelos/shared';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -19,7 +26,8 @@ import {
 } from 'class-validator';
 import { PaginationQueryDto } from '../common/dto/pagination.dto';
 
-const toBool = ({ value }: { value: unknown }) => (value === 'true' ? true : value === 'false' ? false : value);
+const toBool = ({ value }: { value: unknown }) =>
+  value === 'true' ? true : value === 'false' ? false : value;
 const AMOUNT = /^\d{1,12}(\.\d{1,2})?$/;
 
 export class PassengerDto {
@@ -34,7 +42,12 @@ export class CreateBookingDto {
   @IsOptional() @IsUUID() programId?: string;
   @IsOptional() @IsUUID() offerId?: string;
   @IsUUID() payerCustomerId!: string;
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => PassengerDto) passengers!: PassengerDto[];
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => PassengerDto)
+  passengers!: PassengerDto[];
   /** Alternative boarding point (BR-15) */
   @IsOptional() @IsUUID() pickupPointId?: string;
   /** Admin only: the branch registering the booking for a shared product */
@@ -45,7 +58,12 @@ export class CreateBookingDto {
 }
 
 export class UpdatePassengersDto {
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(50) @ValidateNested({ each: true }) @Type(() => PassengerDto) passengers!: PassengerDto[];
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => PassengerDto)
+  passengers!: PassengerDto[];
   @IsOptional() @IsUUID() pickupPointId?: string | null;
 }
 
@@ -59,13 +77,19 @@ export class TransferBookingDto {
 }
 
 export class BookingQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional({ enum: BOOKING_STATUSES }) @IsOptional() @IsIn(BOOKING_STATUSES) status?: BookingStatus;
+  @ApiPropertyOptional({ enum: BOOKING_STATUSES })
+  @IsOptional()
+  @IsIn(BOOKING_STATUSES)
+  status?: BookingStatus;
   @ApiPropertyOptional() @IsOptional() @IsUUID() tripId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() programId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() offerId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() customerId?: string;
-  @ApiPropertyOptional({ enum: ['UNPAID', 'PARTIAL', 'PAID'] }) @IsOptional() @IsIn(['UNPAID', 'PARTIAL', 'PAID']) paymentState?: 'UNPAID' | 'PARTIAL' | 'PAID';
+  @ApiPropertyOptional({ enum: ['UNPAID', 'PARTIAL', 'PAID'] })
+  @IsOptional()
+  @IsIn(['UNPAID', 'PARTIAL', 'PAID'])
+  paymentState?: 'UNPAID' | 'PARTIAL' | 'PAID';
   @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() from?: Date;
   @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() to?: Date;
 }
@@ -73,24 +97,39 @@ export class BookingQueryDto extends PaginationQueryDto {
 // ------------------------------------------------------------------ payments
 
 export class RecordPaymentDto {
-  @IsString() @Matches(AMOUNT, { message: 'amount must have up to 2 decimals' }) amount!: string;
+  @IsString()
+  @Matches(AMOUNT, { message: 'amount must have up to 2 decimals' })
+  amount!: string;
   @IsOptional() @IsIn(['CASH']) method?: 'CASH';
   /** Defaults to the booking's payer */
   @IsOptional() @IsString() @MinLength(3) @MaxLength(160) payerName?: string;
   @IsOptional() @Type(() => Date) @IsDate() paidAt?: Date;
   @IsOptional() @IsString() @MaxLength(500) notes?: string;
   /** Sent by the client so a double click records one payment (PAY-10) */
-  @IsOptional() @IsString() @MinLength(8) @MaxLength(80) idempotencyKey?: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(80)
+  idempotencyKey?: string;
 }
 
 export class RefundDto {
-  @IsString() @Matches(AMOUNT, { message: 'amount must have up to 2 decimals' }) amount!: string;
+  @IsString()
+  @Matches(AMOUNT, { message: 'amount must have up to 2 decimals' })
+  amount!: string;
   @IsString() @MinLength(3) @MaxLength(255) reason!: string;
-  @IsOptional() @IsString() @MinLength(8) @MaxLength(80) idempotencyKey?: string;
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(80)
+  idempotencyKey?: string;
 }
 
 export class PaymentQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional({ enum: PAYMENT_KINDS }) @IsOptional() @IsIn(PAYMENT_KINDS) kind?: PaymentKind;
+  @ApiPropertyOptional({ enum: PAYMENT_KINDS })
+  @IsOptional()
+  @IsIn(PAYMENT_KINDS)
+  kind?: PaymentKind;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() bookingId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() receivedById?: string;
@@ -110,11 +149,17 @@ export class UpdateVisaDto {
 }
 
 export class VisaQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional({ enum: VISA_STATUSES }) @IsOptional() @IsIn(VISA_STATUSES) status?: VisaStatus;
+  @ApiPropertyOptional({ enum: VISA_STATUSES })
+  @IsOptional()
+  @IsIn(VISA_STATUSES)
+  status?: VisaStatus;
   @ApiPropertyOptional() @IsOptional() @IsUUID() tripId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() programId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
-  @ApiPropertyOptional({ description: 'Only visas not approved for trips departing within the warning window (VIS-03)' })
+  @ApiPropertyOptional({
+    description:
+      'Only visas not approved for trips departing within the warning window (VIS-03)',
+  })
   @IsOptional()
   @Transform(toBool)
   @IsBoolean()

@@ -1,17 +1,51 @@
-import { Body, Controller, Get, Injectable, Module, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiPropertyOptional, ApiTags, PartialType } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Injectable,
+  Module,
+  NotFoundException,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiPropertyOptional,
+  ApiTags,
+  PartialType,
+} from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsLatitude,
+  IsLongitude,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { AuditService, diff } from '../audit-logs/audit.service';
 import type { AuthUser } from '../common/auth.types';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
-import { ilike, orderArgs, pageArgs, paginate, PaginationQueryDto } from '../common/dto/pagination.dto';
+import {
+  ilike,
+  orderArgs,
+  pageArgs,
+  paginate,
+  PaginationQueryDto,
+} from '../common/dto/pagination.dto';
 import { ExportService, ExportSpec } from '../common/export/export.service';
 import { isAll } from '../common/scope';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-const toBool = ({ value }: { value: unknown }) => (value === 'true' ? true : value === 'false' ? false : value);
+const toBool = ({ value }: { value: unknown }) =>
+  value === 'true' ? true : value === 'false' ? false : value;
 
 export class BranchDto {
   @IsString() @MinLength(2) @MaxLength(120) name!: string;
@@ -30,11 +64,18 @@ export class SetActiveDto {
 }
 
 export class BranchQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional() @IsOptional() @Transform(toBool) @IsBoolean() isActive?: boolean;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(toBool)
+  @IsBoolean()
+  isActive?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsUUID() cityId?: string;
 }
 
-const include = { city: { include: { country: true } }, _count: { select: { users: true } } } satisfies Prisma.BranchInclude;
+const include = {
+  city: { include: { country: true } },
+  _count: { select: { users: true } },
+} satisfies Prisma.BranchInclude;
 type BranchRow = Prisma.BranchGetPayload<{ include: typeof include }>;
 
 const EXPORT: ExportSpec<BranchRow> = {
@@ -48,7 +89,10 @@ const EXPORT: ExportSpec<BranchRow> = {
     { header: 'واتساب', value: (b) => b.whatsapp },
     { header: 'ساعات العمل', value: (b) => b.workingHours },
     { header: 'عدد الموظفين', value: (b) => b._count.users },
-    { header: 'يظهر في الصفحة العامة', value: (b) => (b.showOnLanding ? 'نعم' : 'لا') },
+    {
+      header: 'يظهر في الصفحة العامة',
+      value: (b) => (b.showOnLanding ? 'نعم' : 'لا'),
+    },
     { header: 'الحالة', value: (b) => (b.isActive ? 'فعّال' : 'معطّل') },
   ],
 };
@@ -65,10 +109,23 @@ export class BranchesService {
       ...(isAll(user) ? {} : { id: user.branchId ?? '' }),
       ...(q.isActive !== undefined ? { isActive: q.isActive } : {}),
       ...(q.cityId ? { cityId: q.cityId } : {}),
-      ...(q.search ? { OR: [{ name: ilike(q.search) }, { address: ilike(q.search) }, { phone: { contains: q.search } }] } : {}),
+      ...(q.search
+        ? {
+            OR: [
+              { name: ilike(q.search) },
+              { address: ilike(q.search) },
+              { phone: { contains: q.search } },
+            ],
+          }
+        : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.branch.findMany({ where, include, orderBy: orderArgs(q, ['name', 'createdAt'] as const, 'name'), ...pageArgs(q) }),
+      this.prisma.branch.findMany({
+        where,
+        include,
+        orderBy: orderArgs(q, ['name', 'createdAt'] as const, 'name'),
+        ...pageArgs(q),
+      }),
       this.prisma.branch.count({ where }),
     ]);
     return paginate(rows, total, q);
@@ -76,7 +133,8 @@ export class BranchesService {
 
   async get(user: AuthUser, id: string) {
     const b = await this.prisma.branch.findUnique({ where: { id }, include });
-    if (!b || (!isAll(user) && b.id !== user.branchId)) throw new NotFoundException('Branch not found');
+    if (!b || (!isAll(user) && b.id !== user.branchId))
+      throw new NotFoundException('Branch not found');
     return b;
   }
 
@@ -84,7 +142,17 @@ export class BranchesService {
     await this.assertCity(dto.cityId);
     return this.prisma.$transaction(async (tx) => {
       const b = await tx.branch.create({ data: dto, include });
-      await this.audit.log(user, { action: 'branch.created', entityType: 'branch', entityId: b.id, summary: `Branch "${b.name}" created`, changes: { after: dto } }, tx);
+      await this.audit.log(
+        user,
+        {
+          action: 'branch.created',
+          entityType: 'branch',
+          entityId: b.id,
+          summary: `Branch "${b.name}" created`,
+          changes: { after: dto },
+        },
+        tx,
+      );
       return b;
     });
   }
@@ -94,7 +162,17 @@ export class BranchesService {
     if (dto.cityId) await this.assertCity(dto.cityId);
     return this.prisma.$transaction(async (tx) => {
       const b = await tx.branch.update({ where: { id }, data: dto, include });
-      await this.audit.log(user, { action: 'branch.updated', entityType: 'branch', entityId: id, summary: `Branch "${b.name}" updated`, changes: diff(before as never, dto as never) }, tx);
+      await this.audit.log(
+        user,
+        {
+          action: 'branch.updated',
+          entityType: 'branch',
+          entityId: id,
+          summary: `Branch "${b.name}" updated`,
+          changes: diff(before as never, dto as never),
+        },
+        tx,
+      );
       return b;
     });
   }
@@ -103,15 +181,34 @@ export class BranchesService {
   async setActive(user: AuthUser, id: string, isActive: boolean) {
     const before = await this.get(user, id);
     return this.prisma.$transaction(async (tx) => {
-      const b = await tx.branch.update({ where: { id }, data: { isActive }, include });
-      if (!isActive) await tx.refreshToken.updateMany({ where: { user: { branchId: id }, revokedAt: null }, data: { revokedAt: new Date() } });
-      await this.audit.log(user, { action: isActive ? 'branch.activated' : 'branch.deactivated', entityType: 'branch', entityId: id, summary: `Branch "${before.name}" ${isActive ? 'activated' : 'deactivated'}` }, tx);
+      const b = await tx.branch.update({
+        where: { id },
+        data: { isActive },
+        include,
+      });
+      if (!isActive)
+        await tx.refreshToken.updateMany({
+          where: { user: { branchId: id }, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      await this.audit.log(
+        user,
+        {
+          action: isActive ? 'branch.activated' : 'branch.deactivated',
+          entityType: 'branch',
+          entityId: id,
+          summary: `Branch "${before.name}" ${isActive ? 'activated' : 'deactivated'}`,
+        },
+        tx,
+      );
       return b;
     });
   }
 
   private async assertCity(cityId: string) {
-    const city = await this.prisma.city.findFirst({ where: { id: cityId, isActive: true, country: { isActive: true } } });
+    const city = await this.prisma.city.findFirst({
+      where: { id: cityId, isActive: true, country: { isActive: true } },
+    });
     if (!city) throw new NotFoundException('City not found or disabled');
   }
 }
@@ -127,9 +224,17 @@ export class BranchesController {
 
   @Get()
   @RequirePermissions('branches.view')
-  @ApiOperation({ summary: 'Branches (Admin: all; others: their own). Supports export=xlsx|all.' })
+  @ApiOperation({
+    summary:
+      'Branches (Admin: all; others: their own). Supports export=xlsx|all.',
+  })
   async list(@CurrentUser() user: AuthUser, @Query() q: BranchQueryDto) {
-    return this.exporter.respond(q, await this.branches.list(user, q), EXPORT, user);
+    return this.exporter.respond(
+      q,
+      await this.branches.list(user, q),
+      EXPORT,
+      user,
+    );
   }
 
   @Get(':id')
@@ -147,17 +252,29 @@ export class BranchesController {
 
   @Patch(':id')
   @RequirePermissions('branches.manage')
-  update(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBranchDto) {
+  update(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateBranchDto,
+  ) {
     return this.branches.update(user, id, dto);
   }
 
   @Patch(':id/active')
   @RequirePermissions('branches.manage')
   @ApiOperation({ summary: 'Activate or deactivate (no deletion, ORG-02)' })
-  setActive(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SetActiveDto) {
+  setActive(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetActiveDto,
+  ) {
     return this.branches.setActive(user, id, dto.isActive);
   }
 }
 
-@Module({ controllers: [BranchesController], providers: [BranchesService], exports: [BranchesService] })
+@Module({
+  controllers: [BranchesController],
+  providers: [BranchesService],
+  exports: [BranchesService],
+})
 export class BranchesModule {}

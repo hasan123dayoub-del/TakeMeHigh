@@ -48,19 +48,29 @@ export class ExportService {
     });
   }
 
-  async workbook<T>(rows: T[], spec: ExportSpec<T>, user: AuthUser): Promise<Buffer> {
-    const settings = await this.prisma.siteSetting.findUnique({ where: { id: 1 } });
+  async workbook<T>(
+    rows: T[],
+    spec: ExportSpec<T>,
+    user: AuthUser,
+  ): Promise<Buffer> {
+    const settings = await this.prisma.siteSetting.findUnique({
+      where: { id: 1 },
+    });
     const wb = new ExcelJS.Workbook();
     wb.creator = settings?.officeName ?? 'TakeMeHigh';
     wb.created = new Date();
-    const ws = wb.addWorksheet(spec.title.slice(0, 31), { views: [{ rightToLeft: true, state: 'frozen', ySplit: 4 }] });
+    const ws = wb.addWorksheet(spec.title.slice(0, 31), {
+      views: [{ rightToLeft: true, state: 'frozen', ySplit: 4 }],
+    });
 
     const span = Math.max(1, spec.columns.length);
     ws.mergeCells(1, 1, 1, span);
-    ws.getCell(1, 1).value = `${settings?.officeName ?? 'TakeMeHigh'} — ${spec.title}`;
+    ws.getCell(1, 1).value =
+      `${settings?.officeName ?? 'TakeMeHigh'} — ${spec.title}`;
     ws.getCell(1, 1).font = { bold: true, size: 14 };
     ws.mergeCells(2, 1, 2, span);
-    ws.getCell(2, 1).value = `تاريخ التصدير: ${new Date().toLocaleString('ar-SY')}   |   المستخدم: ${user.fullName}   |   عدد السجلات: ${rows.length}`;
+    ws.getCell(2, 1).value =
+      `تاريخ التصدير: ${new Date().toLocaleString('ar-SY')}   |   المستخدم: ${user.fullName}   |   عدد السجلات: ${rows.length}`;
     ws.getCell(2, 1).font = { size: 10, color: { argb: 'FF595959' } };
 
     const header = ws.getRow(4);
@@ -68,8 +78,16 @@ export class ExportService {
       const cell = header.getCell(i + 1);
       cell.value = c.header;
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1F3864' },
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true,
+      };
       ws.getColumn(i + 1).width = c.width ?? 18;
     });
     header.height = 22;
@@ -85,7 +103,10 @@ export class ExportService {
         cell.alignment = { vertical: 'top', wrapText: true };
       });
     });
-    ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: span } };
+    ws.autoFilter = {
+      from: { row: 4, column: 1 },
+      to: { row: 4, column: span },
+    };
     return Buffer.from(await wb.xlsx.writeBuffer());
   }
 }
@@ -96,4 +117,5 @@ export class ExportModule {}
 
 export const MONEY_FMT = '#,##0.00';
 /** Prisma Decimal / string money → number for Excel cells */
-export const num = (v: { toString(): string } | null | undefined) => (v == null ? null : Number(v.toString()));
+export const num = (v: { toString(): string } | null | undefined) =>
+  v == null ? null : Number(v.toString());

@@ -12,7 +12,10 @@ export class SeatsUnavailableError extends Error {
   }
 }
 
-export type Target = { kind: 'TRIP'; id: string } | { kind: 'PROGRAM'; id: string; legTripIds: string[] } | { kind: 'OFFER'; id: string };
+export type Target =
+  | { kind: 'TRIP'; id: string }
+  | { kind: 'PROGRAM'; id: string; legTripIds: string[] }
+  | { kind: 'OFFER'; id: string };
 
 async function takeTrip(tx: Tx, tripId: string, n: number) {
   const updated = await tx.$executeRaw`
@@ -29,7 +32,8 @@ export async function takeSeats(tx: Tx, target: Target, n: number) {
       WHERE id = ${target.id}::uuid AND status = 'OPEN' AND confirmed_seats + ${n} <= max_passengers`;
     if (updated !== 1) throw new SeatsUnavailableError(`program ${target.id}`);
     // Legs in a fixed order so two concurrent program bookings cannot deadlock.
-    for (const tripId of [...target.legTripIds].sort()) await takeTrip(tx, tripId, n);
+    for (const tripId of [...target.legTripIds].sort())
+      await takeTrip(tx, tripId, n);
     return;
   }
   const updated = await tx.$executeRaw`

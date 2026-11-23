@@ -4,7 +4,12 @@ import type { Tx } from '../../prisma/prisma.service';
  * Gap-free yearly sequences (PAY-03, BKG-04). The upsert takes a row lock, so two transactions can
  * never receive the same number; a rolled-back transaction also rolls back its increment.
  */
-export async function nextNumber(tx: Tx, prefix: string, digits = 6, at = new Date()): Promise<string> {
+export async function nextNumber(
+  tx: Tx,
+  prefix: string,
+  digits = 6,
+  at = new Date(),
+): Promise<string> {
   const year = at.getUTCFullYear();
   const key = `${prefix}-${year}`;
   const rows = await tx.$queryRaw<{ value: number }[]>`

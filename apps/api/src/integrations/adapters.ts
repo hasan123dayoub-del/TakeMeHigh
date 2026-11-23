@@ -50,15 +50,24 @@ async function call(ctx: AdapterContext, path: string): Promise<unknown> {
   const timer = setTimeout(() => controller.abort(), ctx.timeoutMs); // INT: 10 s timeout
   try {
     const res = await fetch(`${ctx.baseUrl.replace(/\/+$/, '')}${path}`, {
-      headers: { Accept: 'application/json', ...(ctx.credentials.apiKey ? { Authorization: `Bearer ${ctx.credentials.apiKey}` } : {}) },
+      headers: {
+        Accept: 'application/json',
+        ...(ctx.credentials.apiKey
+          ? { Authorization: `Bearer ${ctx.credentials.apiKey}` }
+          : {}),
+      },
       signal: controller.signal,
     });
-    if (res.status === 401 || res.status === 403) throw new AdapterError('The supplier rejected the credentials', false);
+    if (res.status === 401 || res.status === 403)
+      throw new AdapterError('The supplier rejected the credentials', false);
     if (!res.ok) throw new AdapterError(`Supplier answered HTTP ${res.status}`);
     return await res.json();
   } catch (e) {
     if (e instanceof AdapterError) throw e;
-    if ((e as Error).name === 'AbortError') throw new AdapterError(`No answer from the supplier within ${ctx.timeoutMs / 1000} s`);
+    if ((e as Error).name === 'AbortError')
+      throw new AdapterError(
+        `No answer from the supplier within ${ctx.timeoutMs / 1000} s`,
+      );
     throw new AdapterError(`Supplier unreachable: ${(e as Error).message}`);
   } finally {
     clearTimeout(timer);
@@ -86,22 +95,37 @@ class RestAdapterV1 implements SupplierAdapter {
 
   async fetchItems(ctx: AdapterContext): Promise<ExternalItem[]> {
     const body = (await call(ctx, '/items')) as { items?: unknown };
-    if (!body || !Array.isArray(body.items)) throw new AdapterError('Unexpected answer: "items" list missing', false);
+    if (!body || !Array.isArray(body.items))
+      throw new AdapterError('Unexpected answer: "items" list missing', false);
     return body.items.map((raw, i) => {
       const r = raw as Record<string, unknown>;
-      const price = String(r.price_per_person ?? '');
-      if (!r.id || !r.name || !DECIMAL.test(price) || typeof r.currency !== 'string')
-        throw new AdapterError(`Item #${i + 1} is invalid (id, name, price_per_person, currency are required)`, false);
+      const text = (v: unknown) =>
+        typeof v === 'string' || typeof v === 'number' ? String(v) : undefined;
+      const price = text(r.price_per_person) ?? '';
+      const id = text(r.id);
+      const name = text(r.name);
+      if (
+        !id ||
+        !name ||
+        !DECIMAL.test(price) ||
+        typeof r.currency !== 'string'
+      )
+        throw new AdapterError(
+          `Item #${i + 1} is invalid (id, name, price_per_person, currency are required)`,
+          false,
+        );
       return {
-        externalRef: String(r.id),
-        name: String(r.name).slice(0, 160),
-        description: r.description ? String(r.description).slice(0, 500) : undefined,
-        fromCity: r.from ? String(r.from) : undefined,
-        toCity: r.to ? String(r.to) : undefined,
+        externalRef: id,
+        name: name.slice(0, 160),
+        description: text(r.description)?.slice(0, 500),
+        fromCity: text(r.from),
+        toCity: text(r.to),
         costPerPerson: price,
         currency: r.currency.toUpperCase(),
         available: typeof r.available === 'boolean' ? r.available : undefined,
-        transportMode: ['LAND', 'SEA', 'AIR'].includes(String(r.mode)) ? (r.mode as TransportMode) : undefined,
+        transportMode: ['LAND', 'SEA', 'AIR'].includes(text(r.mode) ?? '')
+          ? (r.mode as TransportMode)
+          : undefined,
       };
     });
   }
@@ -109,8 +133,16 @@ class RestAdapterV1 implements SupplierAdapter {
 
 export const ADAPTERS: SupplierAdapter[] = [
   new RestAdapterV1('hotel-rest-v1', 'HOTEL', 'Hotel platform — REST v1'),
-  new RestAdapterV1('transport-rest-v1', 'TRANSPORT', 'Transport platform — REST v1'),
-  new RestAdapterV1('restaurant-rest-v1', 'RESTAURANT', 'Restaurant platform — REST v1'),
+  new RestAdapterV1(
+    'transport-rest-v1',
+    'TRANSPORT',
+    'Transport platform — REST v1',
+  ),
+  new RestAdapterV1(
+    'restaurant-rest-v1',
+    'RESTAURANT',
+    'Restaurant platform — REST v1',
+  ),
 ];
 
 export const adapterFor = (key: string) => ADAPTERS.find((a) => a.key === key);

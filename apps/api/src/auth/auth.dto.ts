@@ -1,4 +1,10 @@
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class LoginDto {
   /** e.g. admin@takemehigh.local */
@@ -21,7 +27,8 @@ export class RefreshTokenDto {
 
 /** AUTH-03: at least 10 characters, with a letter and a digit. */
 export const PASSWORD_RULE = /^(?=.*[A-Za-z؀-ۿ])(?=.*\d).{10,128}$/;
-export const PASSWORD_MESSAGE = 'Password must be at least 10 characters and contain a letter and a digit';
+export const PASSWORD_MESSAGE =
+  'Password must be at least 10 characters and contain a letter and a digit';
 
 export class ChangePasswordDto {
   @IsString()

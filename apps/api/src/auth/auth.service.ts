@@ -1,7 +1,11 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { Permission, RoleScope } from '@travelos/shared';
+import type { Permission } from '@travelos/shared';
 import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { AuditService } from '../audit-logs/audit.service';
@@ -31,7 +35,8 @@ const userInclude = {
 } as const;
 type UserWithRole = Prisma.UserGetPayload<{ include: typeof userInclude }>;
 
-const permissionsOf = (u: UserWithRole) => u.role.permissions.map((rp) => rp.permission.code) as Permission[];
+const permissionsOf = (u: UserWithRole) =>
+  u.role.permissions.map((rp) => rp.permission.code) as Permission[];
 
 @Injectable()
 export class AuthService {
@@ -60,8 +65,12 @@ export class AuthService {
         summary: `Sign-in refused (locked): ${user.email}`,
         ip: meta.ip,
       });
-      const minutes = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000);
-      throw new UnauthorizedException(`Too many failed attempts. Try again in ${minutes} minute(s).`);
+      const minutes = Math.ceil(
+        (user.lockedUntil.getTime() - Date.now()) / 60_000,
+      );
+      throw new UnauthorizedException(
+        `Too many failed attempts. Try again in ${minutes} minute(s).`,
+      );
     }
 
     const ok = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
@@ -77,7 +86,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
     if (user.branch && !user.branch.isActive) {
-      throw new UnauthorizedException('Your branch is deactivated. Contact the office administrator.');
+      throw new UnauthorizedException(
+        'Your branch is deactivated. Contact the office administrator.',
+      );
     }
 
     await this.prisma.user.update({
@@ -94,21 +105,29 @@ export class AuthService {
     return this.issue(user, randomUUID(), meta);
   }
 
-  private async recordFailure(userId: string, previous: number, meta: ClientMeta) {
+  private async recordFailure(
+    userId: string,
+    previous: number,
+    meta: ClientMeta,
+  ) {
     const count = previous + 1;
     const lock = count >= MAX_FAILED_LOGINS;
     await this.prisma.user.update({
       where: { id: userId },
       data: {
         failedLoginCount: lock ? 0 : count,
-        lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000) : undefined,
+        lockedUntil: lock
+          ? new Date(Date.now() + LOCK_MINUTES * 60_000)
+          : undefined,
       },
     });
     await this.audit.log(null, {
       action: lock ? 'auth.account_locked' : 'auth.login_failed',
       entityType: 'user',
       entityId: userId,
-      summary: lock ? `Account locked for ${LOCK_MINUTES} minutes after ${MAX_FAILED_LOGINS} failed attempts` : `Failed sign-in (${count}/${MAX_FAILED_LOGINS})`,
+      summary: lock
+        ? `Account locked for ${LOCK_MINUTES} minutes after ${MAX_FAILED_LOGINS} failed attempts`
+        : `Failed sign-in (${count}/${MAX_FAILED_LOGINS})`,
       ip: meta.ip,
     });
   }
@@ -119,8 +138,11 @@ export class AuthService {
    * expires (inactivity timeout).
    */
   async refresh(rawToken: string, meta: ClientMeta) {
-    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(rawToken) } });
-    const expired = () => new UnauthorizedException('Session expired. Please sign in again.');
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: sha256(rawToken) },
+    });
+    const expired = () =>
+      new UnauthorizedException('Session expired. Please sign in again.');
     if (!stored) throw expired();
     if (stored.revokedAt) {
       await this.revokeFamily(stored.familyId);
@@ -143,36 +165,69 @@ export class AuthService {
     }
 
     // Claims are rebuilt from the database, so role/permission/branch changes apply at the next refresh.
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: stored.userId }, include: userInclude });
-    if (!user.isActive || (user.branch && !user.branch.isActive)) throw expired();
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: stored.userId },
+      include: userInclude,
+    });
+    if (!user.isActive || (user.branch && !user.branch.isActive))
+      throw expired();
     return this.issue(user, stored.familyId, meta);
   }
 
   async logout(rawToken: string) {
-    const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash: sha256(rawToken) } });
+    const stored = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash: sha256(rawToken) },
+    });
     if (stored) await this.revokeFamily(stored.familyId);
     return { signedOut: true };
   }
 
   async me(user: AuthUser) {
-    const u = await this.prisma.user.findUnique({ where: { id: user.userId }, include: userInclude });
+    const u = await this.prisma.user.findUnique({
+      where: { id: user.userId },
+      include: userInclude,
+    });
     if (!u || !u.isActive) throw new UnauthorizedException();
     return this.profile(u);
   }
 
   /** AUTH-10: the initial password must be changed; also used for regular password changes. */
-  async changePassword(user: AuthUser, current: string, next: string, meta: ClientMeta) {
-    const u = await this.prisma.user.findUniqueOrThrow({ where: { id: user.userId }, include: userInclude });
-    if (!(await bcrypt.compare(current, u.passwordHash))) throw new BadRequestException('The current password is wrong');
-    if (current === next) throw new BadRequestException('Choose a password different from the current one');
+  async changePassword(
+    user: AuthUser,
+    current: string,
+    next: string,
+    meta: ClientMeta,
+  ) {
+    const u = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.userId },
+      include: userInclude,
+    });
+    if (!(await bcrypt.compare(current, u.passwordHash)))
+      throw new BadRequestException('The current password is wrong');
+    if (current === next)
+      throw new BadRequestException(
+        'Choose a password different from the current one',
+      );
     const updated = await this.prisma.user.update({
       where: { id: u.id },
-      data: { passwordHash: await bcrypt.hash(next, BCRYPT_ROUNDS), mustChangePassword: false },
+      data: {
+        passwordHash: await bcrypt.hash(next, BCRYPT_ROUNDS),
+        mustChangePassword: false,
+      },
       include: userInclude,
     });
     // Every other session ends; this one continues with fresh tokens.
-    await this.prisma.refreshToken.updateMany({ where: { userId: u.id, revokedAt: null }, data: { revokedAt: new Date() } });
-    await this.audit.log(user, { action: 'auth.password_changed', entityType: 'user', entityId: u.id, summary: `${u.fullName} changed their password`, ip: meta.ip });
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: u.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await this.audit.log(user, {
+      action: 'auth.password_changed',
+      entityType: 'user',
+      entityId: u.id,
+      summary: `${u.fullName} changed their password`,
+      ip: meta.ip,
+    });
     return this.issue(updated, randomUUID(), meta);
   }
 
@@ -184,7 +239,7 @@ export class AuthService {
       email: u.email,
       fullName: u.fullName,
       roleCode: u.role.code,
-      scope: u.role.scope as RoleScope,
+      scope: u.role.scope,
       branchId: u.branchId,
       permissions: permissionsOf(u),
       mustChangePassword: u.mustChangePassword,
@@ -197,7 +252,7 @@ export class AuthService {
       email: user.email,
       name: user.fullName,
       role: user.role.code,
-      scp: user.role.scope as RoleScope,
+      scp: user.role.scope,
       bid: user.branchId,
       perms: permissionsOf(user),
       mcp: user.mustChangePassword,
@@ -224,7 +279,10 @@ export class AuthService {
   }
 
   private async revokeFamily(familyId: string) {
-    await this.prisma.refreshToken.updateMany({ where: { familyId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await this.prisma.refreshToken.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
   }
 
   private profile(user: UserWithRole) {
@@ -241,7 +299,13 @@ export class AuthService {
         nameEn: user.role.nameEn,
         scope: user.role.scope,
       },
-      branch: user.branch ? { id: user.branch.id, name: user.branch.name, city: user.branch.city.nameAr } : null,
+      branch: user.branch
+        ? {
+            id: user.branch.id,
+            name: user.branch.name,
+            city: user.branch.city.nameAr,
+          }
+        : null,
       permissions: permissionsOf(user),
     };
   }

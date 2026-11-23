@@ -1,6 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import type { Paginated } from '@travelos/shared';
 
 /** Hard cap for exports (RPT-08): larger exports must be filtered first. */
@@ -31,10 +39,14 @@ export class PaginationQueryDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  @Transform(({ value }: { value: string }) => (typeof value === 'string' ? value.trim() || undefined : value))
+  @Transform(({ value }: { value: string }) =>
+    typeof value === 'string' ? value.trim() || undefined : value,
+  )
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Sort field (each list documents its allowed fields)' })
+  @ApiPropertyOptional({
+    description: 'Sort field (each list documents its allowed fields)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(40)
@@ -42,11 +54,16 @@ export class PaginationQueryDto {
 
   @ApiPropertyOptional({ enum: ['asc', 'desc'], default: 'desc' })
   @IsOptional()
-  @Transform(({ value }: { value: string }) => (typeof value === 'string' ? value.toLowerCase() : value))
+  @Transform(({ value }: { value: string }) =>
+    typeof value === 'string' ? value.toLowerCase() : value,
+  )
   @IsIn(['asc', 'desc'])
   order: 'asc' | 'desc' = 'desc';
 
-  @ApiPropertyOptional({ enum: ['xlsx', 'all'], description: 'xlsx = Excel download, all = every row as JSON (PDF view)' })
+  @ApiPropertyOptional({
+    enum: ['xlsx', 'all'],
+    description: 'xlsx = Excel download, all = every row as JSON (PDF view)',
+  })
   @IsOptional()
   @IsIn(['xlsx', 'all'])
   export?: 'xlsx' | 'all';
@@ -59,16 +76,37 @@ export function pageArgs(q: PaginationQueryDto) {
 }
 
 /** Prisma orderBy for an allowed field, else the default. */
-export function orderArgs<T extends string>(q: PaginationQueryDto, allowed: readonly T[], fallback: T) {
-  const field = (allowed as readonly string[]).includes(q.sort ?? '') ? (q.sort as T) : fallback;
+export function orderArgs<T extends string>(
+  q: PaginationQueryDto,
+  allowed: readonly T[],
+  fallback: T,
+) {
+  const field = (allowed as readonly string[]).includes(q.sort ?? '')
+    ? (q.sort as T)
+    : fallback;
   return { [field]: q.order } as Record<T, 'asc' | 'desc'>;
 }
 
-export function paginate<T>(data: T[], total: number, q: PaginationQueryDto): Paginated<T> {
+export function paginate<T>(
+  data: T[],
+  total: number,
+  q: PaginationQueryDto,
+): Paginated<T> {
   const pageSize = q.export ? Math.max(1, data.length) : q.pageSize;
   const page = q.export ? 1 : q.page;
-  return { data, meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } };
+  return {
+    data,
+    meta: {
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  };
 }
 
 /** Case-insensitive `contains` filter. */
-export const ilike = (s: string) => ({ contains: s, mode: 'insensitive' as const });
+export const ilike = (s: string) => ({
+  contains: s,
+  mode: 'insensitive' as const,
+});
