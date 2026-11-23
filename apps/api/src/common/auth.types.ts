@@ -2,35 +2,28 @@ import type { Permission, RoleScope } from '@travelos/shared';
 
 /**
  * Identity attached to every authenticated request, derived only from the verified access token.
- * Office users always have officeId + branchId + memberId; platform admins may have none.
+ * Single-tenant (BR-01): there is no office id. branchId is null only for ALL-scope roles (Admin).
  */
 export interface AuthUser {
   userId: string;
   email: string;
-  isPlatformAdmin: boolean;
-  memberId: string | null;
-  officeId: string | null;
-  branchId: string | null;
-  /** OFFICE = sees every branch of the office; BRANCH = only its own branch */
-  scope: RoleScope | null;
-  permissions: Permission[];
-}
-
-/** Office staff identity (guaranteed by OfficeMemberGuard). */
-export type OfficeUser = AuthUser & {
-  memberId: string;
-  officeId: string;
-  branchId: string;
+  fullName: string;
+  roleCode: string;
+  /** ALL = every branch, BRANCH = own branch, ASSIGNED = assigned trips only (AUTH-08) */
   scope: RoleScope;
-};
+  branchId: string | null;
+  permissions: Permission[];
+  /** Must change the initial password before using the API (AUTH-10) */
+  mustChangePassword: boolean;
+}
 
 export interface AccessTokenPayload {
   sub: string;
   email: string;
-  pa: boolean; // platform admin
-  mid: string | null;
-  oid: string | null;
+  name: string;
+  role: string;
+  scp: RoleScope;
   bid: string | null;
-  scp: RoleScope | null;
   perms: Permission[];
+  mcp: boolean;
 }

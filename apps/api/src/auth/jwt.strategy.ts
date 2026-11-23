@@ -19,12 +19,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: p.sub,
       email: p.email,
-      isPlatformAdmin: p.pa,
-      memberId: p.mid,
-      officeId: p.oid,
-      branchId: p.bid,
+      fullName: p.name,
+      roleCode: p.role,
       scope: p.scp,
+      branchId: p.bid,
       permissions: p.perms ?? [],
+      mustChangePassword: !!p.mcp,
     };
   }
 }

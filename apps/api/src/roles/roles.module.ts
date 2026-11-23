@@ -1,65 +1,33 @@
-import {
-  BadRequestException,
-  Body,
-  ConflictException,
-  Controller,
-  Delete,
-  Get,
-  Injectable,
-  Module,
-  NotFoundException,
-  Param,
-  ParseUUIDPipe,
-  Patch,
-  Post,
-} from '@nestjs/common';
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Injectable, Module, NotFoundException, Param, ParseUUIDPipe, Patch, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { ALL_PERMISSIONS, PERMISSIONS } from '@travelos/shared';
-import type { Permission } from '@travelos/shared';
-import {
-  ArrayUnique,
-  IsArray,
-  IsIn,
-  IsOptional,
-  IsString,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { ALL_PERMISSIONS, PERMISSIONS, type Permission } from '@travelos/shared';
+import { ArrayUnique, IsArray, IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { AuditService } from '../audit-logs/audit.service';
 import type { AuthUser } from '../common/auth.types';
-import { CurrentUser, RequirePermissions } from '../common/decorators';
-import { officeUser } from '../common/scope';
+import { CurrentUser, RequireAnyPermission, RequirePermissions } from '../common/decorators';
 import { PrismaService } from '../prisma/prisma.service';
 
 export class CreateRoleDto {
-  @IsString() @MinLength(2) @MaxLength(60) name!: string;
+  @IsString() @Matches(/^[A-Z][A-Z0-9_]{2,39}$/, { message: 'code must be UPPER_SNAKE_CASE (3-40 characters)' }) code!: string;
+  @IsString() @MinLength(2) @MaxLength(60) nameAr!: string;
+  @IsString() @MinLength(2) @MaxLength(60) nameEn!: string;
   @IsOptional() @IsString() @MaxLength(255) description?: string;
-  /** OFFICE = sees all branches; BRANCH = limited to the member's branch */
-  @IsIn(['OFFICE', 'BRANCH']) scope!: 'OFFICE' | 'BRANCH';
-  @IsArray()
-  @ArrayUnique()
-  @IsIn(ALL_PERMISSIONS, { each: true })
-  permissions!: Permission[];
+  /** Custom roles are branch-bound (the Admin is the only ALL-scope role) */
+  @IsIn(['BRANCH', 'ASSIGNED']) scope!: 'BRANCH' | 'ASSIGNED';
+  @IsArray() @ArrayUnique() @IsIn(ALL_PERMISSIONS, { each: true }) permissions!: Permission[];
 }
 
 export class UpdateRoleDto {
-  @IsOptional() @IsString() @MinLength(2) @MaxLength(60) name?: string;
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(60) nameAr?: string;
+  @IsOptional() @IsString() @MinLength(2) @MaxLength(60) nameEn?: string;
   @IsOptional() @IsString() @MaxLength(255) description?: string;
-  @IsOptional() @IsIn(['OFFICE', 'BRANCH']) scope?: 'OFFICE' | 'BRANCH';
-  @IsOptional()
-  @IsArray()
-  @ArrayUnique()
-  @IsIn(ALL_PERMISSIONS, { each: true })
-  permissions?: Permission[];
 }
 
-/** Permissions that only make sense office-wide; a BRANCH role cannot hold them. */
-const OFFICE_ONLY: Permission[] = [
-  'office.manage',
-  'branches.manage',
-  'employees.manage',
-  'roles.manage',
-];
+export class SetPermissionsDto {
+  @IsArray() @ArrayUnique() @IsIn(ALL_PERMISSIONS, { each: true }) permissions!: Permission[];
+}
+
+const include = { permissions: { include: { permission: true } }, _count: { select: { users: true } } } as const;
 
 @Injectable()
 export class RolesService {
@@ -68,202 +36,129 @@ export class RolesService {
     private readonly audit: AuditService,
   ) {}
 
-  catalogue() {
-    return ALL_PERMISSIONS.map((key) => ({ key, ...PERMISSIONS[key] }));
+  async list() {
+    const roles = await this.prisma.role.findMany({ include, orderBy: [{ isSystem: 'desc' }, { createdAt: 'asc' }] });
+    return roles.map((r) => this.shape(r));
   }
 
-  async list(user: AuthUser) {
-    const { officeId } = officeUser(user);
-    const roles = await this.prisma.role.findMany({
-      where: { officeId },
-      include: {
-        permissions: { include: { permission: true } },
-        _count: { select: { members: true } },
-      },
-      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
-    });
-    return roles.map(({ permissions, _count, ...r }) => ({
-      ...r,
-      members: _count.members,
-      permissions: permissions.map((p) => p.permission.key),
-    }));
+  catalogue() {
+    return ALL_PERMISSIONS.map((code) => ({ code, ...PERMISSIONS[code] }));
   }
 
   async create(user: AuthUser, dto: CreateRoleDto) {
-    const { officeId } = officeUser(user);
-    this.assertScope(dto.scope, dto.permissions);
-    const ids = await this.permissionIds(dto.permissions);
     return this.prisma.$transaction(async (tx) => {
       const role = await tx.role.create({
         data: {
-          officeId,
-          name: dto.name,
+          code: dto.code,
+          nameAr: dto.nameAr,
+          nameEn: dto.nameEn,
           description: dto.description,
           scope: dto.scope,
-          permissions: {
-            create: ids.map((permissionId) => ({ permissionId })),
-          },
+          permissions: { create: await this.permissionLinks(tx, dto.permissions) },
         },
+        include,
       });
-      await this.audit.log(
-        user,
-        {
-          action: 'role.created',
-          entityType: 'role',
-          entityId: role.id,
-          summary: `Created role ${role.name}`,
-          metadata: { permissions: dto.permissions },
-        },
-        tx,
-      );
-      return role;
+      await this.audit.log(user, { action: 'role.created', entityType: 'role', entityId: role.id, summary: `Role ${role.nameEn} created`, changes: { after: { permissions: dto.permissions } } }, tx);
+      return this.shape(role);
     });
   }
 
   async update(user: AuthUser, id: string, dto: UpdateRoleDto) {
-    const { officeId } = officeUser(user);
-    const role = await this.prisma.role.findFirst({
-      where: { id, officeId },
-      include: { permissions: { include: { permission: true } } },
-    });
-    if (!role) throw new NotFoundException('Role not found');
-    const scope = dto.scope ?? role.scope;
-    const permissions =
-      dto.permissions ??
-      (role.permissions.map((p) => p.permission.key) as Permission[]);
-    this.assertScope(scope, permissions);
-    const ids = dto.permissions
-      ? await this.permissionIds(dto.permissions)
-      : null;
+    await this.find(id);
+    const role = await this.prisma.role.update({ where: { id }, data: dto, include });
+    await this.audit.log(user, { action: 'role.updated', entityType: 'role', entityId: id, summary: `Role ${role.nameEn} renamed`, changes: { after: dto } });
+    return this.shape(role);
+  }
 
+  /** AUTH-06: any role's permission set except ADMIN's, which always has everything. */
+  async setPermissions(user: AuthUser, id: string, permissions: Permission[]) {
+    const role = await this.find(id);
+    if (role.code === 'ADMIN') throw new BadRequestException('The Admin role always has every permission');
+    const before = role.permissions.map((p) => p.permission.code);
     return this.prisma.$transaction(async (tx) => {
-      await tx.role.update({
-        where: { id },
-        data: { name: dto.name, description: dto.description, scope },
-      });
-      if (ids) {
-        await tx.rolePermission.deleteMany({ where: { roleId: id } });
-        await tx.rolePermission.createMany({
-          data: ids.map((permissionId) => ({ roleId: id, permissionId })),
-        });
-      }
-      // Never lock the office out of its own administration.
-      const admins = await tx.officeMember.count({
-        where: {
-          officeId,
-          isActive: true,
-          role: {
-            scope: 'OFFICE',
-            permissions: { some: { permission: { key: 'roles.manage' } } },
-          },
-        },
-      });
-      if (admins < 1)
-        throw new ConflictException(
-          'This change would leave no active member able to manage roles',
-        );
-      // Holders of this role get the new permissions at their next token refresh (≤ 15 minutes).
-      await this.audit.log(
-        user,
-        {
-          action: 'role.updated',
-          entityType: 'role',
-          entityId: id,
-          summary: `Updated role ${dto.name ?? role.name}`,
-          metadata: { permissions },
-        },
-        tx,
-      );
-      return (await this.list(user)).find((r) => r.id === id);
+      await tx.rolePermission.deleteMany({ where: { roleId: id } });
+      await tx.rolePermission.createMany({ data: await this.permissionLinks(tx, permissions, id) });
+      // Members get the new permissions at their next token refresh (≤ 15 minutes).
+      const updated = await tx.role.findUniqueOrThrow({ where: { id }, include });
+      await this.audit.log(user, {
+        action: 'role.permissions_changed',
+        entityType: 'role',
+        entityId: id,
+        summary: `Permissions of ${role.nameEn} changed`,
+        changes: { before: { added: [], removed: before.filter((p) => !permissions.includes(p as Permission)) }, after: { added: permissions.filter((p) => !before.includes(p)) } },
+      }, tx);
+      return this.shape(updated);
     });
   }
 
   async remove(user: AuthUser, id: string) {
-    const { officeId } = officeUser(user);
-    const role = await this.prisma.role.findFirst({
-      where: { id, officeId },
-      include: { _count: { select: { members: true } } },
-    });
-    if (!role) throw new NotFoundException('Role not found');
-    if (role.isSystem)
-      throw new ConflictException('Default roles cannot be deleted');
-    if (role._count.members)
-      throw new ConflictException(
-        `Reassign the ${role._count.members} employee(s) using this role first`,
-      );
+    const role = await this.find(id);
+    if (role.isSystem) throw new BadRequestException('System roles cannot be deleted');
+    if (role._count.users) throw new ConflictException('Move the users of this role to another role first');
     await this.prisma.role.delete({ where: { id } });
-    await this.audit.log(user, {
-      action: 'role.deleted',
-      entityType: 'role',
-      entityId: id,
-      summary: `Deleted role ${role.name}`,
-    });
+    await this.audit.log(user, { action: 'role.deleted', entityType: 'role', entityId: id, summary: `Role ${role.nameEn} deleted` });
     return { deleted: true };
   }
 
-  private assertScope(scope: string, permissions: Permission[]) {
-    const bad =
-      scope === 'BRANCH'
-        ? permissions.filter((p) => OFFICE_ONLY.includes(p))
-        : [];
-    if (bad.length)
-      throw new BadRequestException(
-        `A branch-level role cannot have: ${bad.join(', ')}`,
-      );
+  private async find(id: string) {
+    const role = await this.prisma.role.findUnique({ where: { id }, include });
+    if (!role) throw new NotFoundException('Role not found');
+    return role;
   }
 
-  private async permissionIds(keys: Permission[]) {
-    const rows = await this.prisma.permission.findMany({
-      where: { key: { in: keys } },
-    });
-    return rows.map((r) => r.id);
+  private async permissionLinks(tx: Pick<PrismaService, 'permission'>, codes: Permission[], roleId?: string) {
+    const rows = await tx.permission.findMany({ where: { code: { in: codes } } });
+    return rows.map((p) => (roleId ? { roleId, permissionId: p.id } : { permissionId: p.id })) as { roleId: string; permissionId: string }[];
+  }
+
+  private shape(r: { permissions: { permission: { code: string } }[]; _count: { users: number } } & Record<string, unknown>) {
+    const { permissions, _count, ...rest } = r;
+    return { ...rest, usersCount: _count.users, permissions: permissions.map((p) => p.permission.code) };
   }
 }
 
 @ApiTags('Roles & permissions')
 @ApiBearerAuth()
-@Controller()
+@Controller('roles')
 export class RolesController {
   constructor(private readonly roles: RolesService) {}
 
+  @Get()
+  @RequireAnyPermission('roles.manage', 'users.manage')
+  @ApiOperation({ summary: 'Roles with their permissions (needed to add staff)' })
+  list() {
+    return this.roles.list();
+  }
+
   @Get('permissions')
   @RequirePermissions('roles.manage')
-  @ApiOperation({
-    summary:
-      'Catalogue of permission keys with Arabic and English descriptions',
-  })
+  @ApiOperation({ summary: 'The permission catalogue (module.action)' })
   catalogue() {
     return this.roles.catalogue();
   }
 
-  @Get('roles')
-  @RequirePermissions('employees.manage')
-  list(@CurrentUser() user: AuthUser) {
-    return this.roles.list(user);
-  }
-
-  @Post('roles')
+  @Post()
   @RequirePermissions('roles.manage')
   create(@CurrentUser() user: AuthUser, @Body() dto: CreateRoleDto) {
     return this.roles.create(user, dto);
   }
 
-  @Patch('roles/:id')
+  @Patch(':id')
   @RequirePermissions('roles.manage')
-  update(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateRoleDto,
-  ) {
+  update(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRoleDto) {
     return this.roles.update(user, id, dto);
   }
 
-  @Delete('roles/:id')
+  @Put(':id/permissions')
   @RequirePermissions('roles.manage')
-  remove(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
+  @ApiOperation({ summary: 'Replace the permission set of a role (not ADMIN, AUTH-06)' })
+  setPermissions(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: SetPermissionsDto) {
+    return this.roles.setPermissions(user, id, dto.permissions);
+  }
+
+  @Delete(':id')
+  @RequirePermissions('roles.manage')
+  remove(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
     return this.roles.remove(user, id);
   }
 }

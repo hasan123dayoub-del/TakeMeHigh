@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { resolve } from 'path';
 import { AuditModule } from './audit-logs/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { BranchesModule } from './branches/branches.module';
+import { ExportModule } from './common/export/export.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -12,18 +15,18 @@ import { validateEnv } from './config/env.validation';
 import { HealthController } from './health.controller';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { OfficesModule } from './offices/offices.module';
-import { BranchesModule } from './branches/branches.module';
-import { EmployeesModule } from './employees/employees.module';
-import { RolesModule } from './roles/roles.module';
-import { PlatformModule } from './platform/platform.module';
-import { ToursModule } from './tours/tours.module';
-import { TripsModule } from './trips/trips.controller';
-import { SuppliersModule } from './suppliers/suppliers.module';
+import { ProductsModule } from './products/products.module';
 import { CustomersModule } from './customers/customers.module';
-import { BookingsModule } from './bookings/bookings.controller';
+import { BookingsModule } from './bookings/bookings.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { ReportsModule } from './reports/reports.module';
-import { PublicPagesModule } from './public-pages/public-pages.module';
+import { PublicSiteModule } from './public-site/public.module';
+import { RequestsModule } from './public-site/requests.module';
+import { CmsModule } from './public-site/cms.module';
+import { ReferenceModule } from './reference/reference.module';
+import { RolesModule } from './roles/roles.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -33,22 +36,25 @@ import { PublicPagesModule } from './public-pages/public-pages.module';
       validate: validateEnv,
     }),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
+    ScheduleModule.forRoot(),
     PrismaModule,
+    ExportModule,
     AuditModule,
     AuthModule,
-    IntegrationsModule,
-    PlatformModule,
-    OfficesModule,
     BranchesModule,
-    EmployeesModule,
+    UsersModule,
     RolesModule,
-    ToursModule,
-    TripsModule,
+    ReferenceModule,
     SuppliersModule,
+    IntegrationsModule,
+    ProductsModule,
+    UploadsModule,
     CustomersModule,
     BookingsModule,
     ReportsModule,
-    PublicPagesModule,
+    PublicSiteModule,
+    RequestsModule,
+    CmsModule,
   ],
   controllers: [HealthController],
   providers: [

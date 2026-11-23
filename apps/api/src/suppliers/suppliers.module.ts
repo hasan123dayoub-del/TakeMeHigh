@@ -12,65 +12,148 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-  PartialType,
-} from '@nestjs/swagger';
-import { SUPPLIER_TYPES } from '@travelos/shared';
-import type { SupplierType } from '@travelos/shared';
-import {
-  IsBoolean,
-  IsDecimal,
-  IsIn,
-  IsISO8601,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Length,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
-import { AuditService } from '../audit-logs/audit.service';
+import { ApiBearerAuth, ApiOperation, ApiPropertyOptional, ApiTags, OmitType, PartialType } from '@nestjs/swagger';
+import { PROFIT_MODES, SERVICE_KINDS, TRANSPORT_MODES, type ProfitMode, type ServiceKind, type TransportMode } from '@travelos/shared';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { AuditService, diff } from '../audit-logs/audit.service';
 import type { AuthUser } from '../common/auth.types';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
-import { paginate, PaginationQueryDto } from '../common/dto/pagination.dto';
-import { officeUser } from '../common/scope';
+import { ilike, orderArgs, pageArgs, paginate, PaginationQueryDto } from '../common/dto/pagination.dto';
+import { ExportService, ExportSpec, MONEY_FMT, num } from '../common/export/export.service';
 import { D, toMoney } from '../common/utils/money';
-import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '../generated/prisma/client';
+import { PrismaService, Tx } from '../prisma/prisma.service';
 
-export class CreateSupplierDto {
-  @IsIn(SUPPLIER_TYPES) type!: SupplierType;
+const toBool = ({ value }: { value: unknown }) => (value === 'true' ? true : value === 'false' ? false : value);
+const MODE_AR: Record<TransportMode, string> = { LAND: 'برّي', SEA: 'بحري', AIR: 'جوّي' };
+
+// ------------------------------------------------------------------ DTOs
+
+export class ServiceDto {
+  @IsString() @Matches(/^[A-Z][A-Z0-9_]{2,39}$/) code!: string;
+  @IsIn(SERVICE_KINDS) kind!: ServiceKind;
+  @IsString() @MinLength(2) @MaxLength(80) nameAr!: string;
+  @IsString() @MinLength(2) @MaxLength(80) nameEn!: string;
+}
+export class UpdateServiceDto extends PartialType(OmitType(ServiceDto, ['code', 'kind'] as const)) {}
+export class ActiveDto {
+  @IsBoolean() isActive!: boolean;
+}
+
+export class CompanyDto {
+  @IsUUID() serviceId!: string;
+  @IsUUID() countryId!: string;
+  @IsOptional() @IsUUID() cityId?: string;
   @IsString() @MinLength(2) @MaxLength(150) name!: string;
+  /** Required for TRANSPORT companies (SUP-03) */
+  @IsOptional() @IsIn(TRANSPORT_MODES) transportMode?: TransportMode;
   @IsOptional() @IsString() @MaxLength(120) contactName?: string;
-  @IsOptional() @Matches(/^[+\d][\d\s()-]{5,39}$/) phone?: string;
+  @IsOptional() @IsString() @MaxLength(40) phone?: string;
+  @IsOptional() @IsEmail() @MaxLength(190) email?: string;
   @IsOptional() @IsString() @MaxLength(255) address?: string;
-  @IsOptional() @IsString() @MaxLength(100) city?: string;
-  @IsOptional() @IsString() @MaxLength(3000) notes?: string;
+  @IsOptional() @IsString() @MaxLength(1000) description?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(5) rating?: number;
+}
+export class UpdateCompanyDto extends PartialType(OmitType(CompanyDto, ['serviceId'] as const)) {}
+
+export class CompanyQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() serviceId?: string;
+  @ApiPropertyOptional({ enum: SERVICE_KINDS }) @IsOptional() @IsIn(SERVICE_KINDS) serviceKind?: ServiceKind;
+  @ApiPropertyOptional({ enum: TRANSPORT_MODES }) @IsOptional() @IsIn(TRANSPORT_MODES) transportMode?: TransportMode;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() countryId?: string;
+  @ApiPropertyOptional() @IsOptional() @Transform(toBool) @IsBoolean() isActive?: boolean;
 }
 
-export class UpdateSupplierDto extends PartialType(CreateSupplierDto) {
-  @IsOptional() @IsBoolean() isActive?: boolean;
+const money = () => Matches(/^\d{1,12}(\.\d{1,2})?$/, { message: 'must be an amount with up to 2 decimals' });
+
+export class ItemDto {
+  @IsString() @MinLength(2) @MaxLength(160) name!: string;
+  @IsOptional() @IsString() @MaxLength(500) description?: string;
+  @IsOptional() @IsUUID() fromCityId?: string;
+  @IsOptional() @IsUUID() toCityId?: string;
+  @IsString() @money() costPerPerson!: string;
+  @IsString() @Length(3, 3) currencyCode!: string;
+}
+export class UpdateItemDto extends PartialType(ItemDto) {}
+
+export class ItemQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional() @IsOptional() @Transform(toBool) @IsBoolean() isActive?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() @Length(3, 3) currencyCode?: string;
 }
 
-export class SupplierQueryDto extends PaginationQueryDto {
-  @IsOptional() @IsIn(SUPPLIER_TYPES) type?: SupplierType;
-  @IsOptional() @IsIn(['true', 'false']) active?: 'true' | 'false';
+export class ProfitRuleDto {
+  @IsUUID() serviceId!: string;
+  @IsOptional() @IsUUID() companyId?: string;
+  @IsIn(PROFIT_MODES) mode!: ProfitMode;
+  @Type(() => Number) @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(1_000_000_000) value!: number;
 }
 
-export class SupplierPaymentDto {
-  /** The trip this payment settles (recommended so dues per trip stay accurate) */
-  @IsOptional() @IsUUID() tripId?: string;
-  @IsDecimal({ decimal_digits: '0,2' }) amount!: string;
-  @Length(3, 3) currencyCode!: string;
-  @IsOptional() @IsISO8601() paidAt?: string;
-  @IsOptional() @IsString() @MaxLength(80) reference?: string;
-  @IsOptional() @IsString() @MaxLength(1000) notes?: string;
+// ------------------------------------------------------------------ shapes & exports
+
+const companyInclude = {
+  service: { select: { id: true, code: true, kind: true, nameAr: true, nameEn: true } },
+  country: { select: { id: true, nameAr: true, nameEn: true, isoCode: true } },
+  city: { select: { id: true, nameAr: true, nameEn: true } },
+  integration: { select: { id: true, status: true, lastSuccessAt: true, lastError: true } },
+  _count: { select: { items: true } },
+} satisfies Prisma.CompanyInclude;
+type CompanyRow = Prisma.CompanyGetPayload<{ include: typeof companyInclude }>;
+
+const COMPANIES_EXPORT: ExportSpec<CompanyRow> = {
+  filename: 'companies',
+  title: 'الشركات',
+  columns: [
+    { header: 'الشركة', value: (c) => c.name, width: 28 },
+    { header: 'الخدمة', value: (c) => c.service.nameAr },
+    { header: 'نوع النقل', value: (c) => (c.transportMode ? MODE_AR[c.transportMode] : '') },
+    { header: 'الدولة', value: (c) => c.country.nameAr },
+    { header: 'المدينة', value: (c) => c.city?.nameAr },
+    { header: 'المسؤول', value: (c) => c.contactName },
+    { header: 'الهاتف', value: (c) => c.phone },
+    { header: 'التكامل', value: (c) => (c.integration ? c.integration.status : 'يدوي') },
+    { header: 'عدد البنود', value: (c) => c._count.items },
+    { header: 'الحالة', value: (c) => (c.isActive ? 'فعّالة' : 'معطّلة') },
+  ],
+};
+
+const itemInclude = {
+  fromCity: { select: { id: true, nameAr: true, nameEn: true } },
+  toCity: { select: { id: true, nameAr: true, nameEn: true } },
+  company: { select: { id: true, name: true, transportMode: true, service: { select: { id: true, kind: true, nameAr: true } } } },
+} satisfies Prisma.CompanyItemInclude;
+type ItemRow = Prisma.CompanyItemGetPayload<{ include: typeof itemInclude }>;
+
+const ITEMS_EXPORT: ExportSpec<ItemRow> = {
+  filename: 'company-items',
+  title: 'بنود الخدمة',
+  columns: [
+    { header: 'البند', value: (i) => i.name, width: 30 },
+    { header: 'الشركة', value: (i) => i.company.name, width: 24 },
+    { header: 'من', value: (i) => i.fromCity?.nameAr },
+    { header: 'إلى', value: (i) => i.toCity?.nameAr },
+    { header: 'الكلفة للشخص', value: (i) => num(i.costPerPerson), numFmt: MONEY_FMT },
+    { header: 'العملة', value: (i) => i.currencyCode, width: 8 },
+    { header: 'المصدر', value: (i) => (i.source === 'INTEGRATION' ? 'تكامل' : 'يدوي') },
+    { header: 'آخر مزامنة', value: (i) => i.lastSyncedAt },
+    { header: 'الحالة', value: (i) => (i.isActive ? 'فعّال' : 'معطّل') },
+  ],
+};
+
+/** Trips and offers that still take bookings: flagged when a supplier cost they use changes (INT-07). */
+export async function flagCostChange(tx: Tx, itemIds: string[]) {
+  if (!itemIds.length) return 0;
+  const res = await tx.trip.updateMany({
+    where: { status: { in: ['DRAFT', 'OPEN'] }, lines: { some: { companyItemId: { in: itemIds } } } },
+    data: { costChangedAt: new Date() },
+  });
+  return res.count;
 }
+
+// ------------------------------------------------------------------ service
 
 @Injectable()
 export class SuppliersService {
@@ -79,328 +162,386 @@ export class SuppliersService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(user: AuthUser, q: SupplierQueryDto) {
-    const where = {
-      officeId: officeUser(user).officeId,
-      ...(q.type ? { type: q.type } : {}),
-      ...(q.active ? { isActive: q.active === 'true' } : {}),
-      ...(q.search
-        ? {
-            OR: [
-              { name: { contains: q.search, mode: 'insensitive' as const } },
-              { city: { contains: q.search, mode: 'insensitive' as const } },
-            ],
-          }
-        : {}),
+  // ---------------- services (SUP-01)
+  services() {
+    return this.prisma.service.findMany({ include: { _count: { select: { companies: true } } }, orderBy: { createdAt: 'asc' } });
+  }
+
+  async createService(user: AuthUser, dto: ServiceDto) {
+    if (dto.kind !== 'OTHER') throw new BadRequestException('Hotel, transport and restaurant already exist; new services use kind OTHER');
+    const s = await this.prisma.service.create({ data: dto });
+    await this.audit.log(user, { action: 'service.created', entityType: 'service', entityId: s.id, summary: `Service ${s.nameEn} added` });
+    return s;
+  }
+
+  async updateService(user: AuthUser, id: string, dto: UpdateServiceDto) {
+    const s = await this.prisma.service.update({ where: { id }, data: dto });
+    await this.audit.log(user, { action: 'service.updated', entityType: 'service', entityId: id, summary: `Service ${s.nameEn} updated`, changes: { after: dto } });
+    return s;
+  }
+
+  async setServiceActive(user: AuthUser, id: string, isActive: boolean) {
+    const s = await this.prisma.service.findUnique({ where: { id } });
+    if (!s) throw new NotFoundException('Service not found');
+    if (s.isSystem && !isActive) throw new BadRequestException('Hotel, transport and restaurant are core services and stay active');
+    const updated = await this.prisma.service.update({ where: { id }, data: { isActive } });
+    await this.audit.log(user, { action: isActive ? 'service.enabled' : 'service.disabled', entityType: 'service', entityId: id, summary: `Service ${s.nameEn} ${isActive ? 'enabled' : 'disabled'}` });
+    return updated;
+  }
+
+  // ---------------- companies (SUP-02..04, SUP-07)
+  async companies(q: CompanyQueryDto) {
+    const where: Prisma.CompanyWhereInput = {
+      ...(q.serviceId ? { serviceId: q.serviceId } : {}),
+      ...(q.serviceKind ? { service: { kind: q.serviceKind } } : {}),
+      ...(q.transportMode ? { transportMode: q.transportMode } : {}),
+      ...(q.countryId ? { countryId: q.countryId } : {}),
+      ...(q.isActive !== undefined ? { isActive: q.isActive } : {}),
+      ...(q.search ? { OR: [{ name: ilike(q.search) }, { contactName: ilike(q.search) }, { phone: { contains: q.search } }] } : {}),
     };
     const [rows, total] = await this.prisma.$transaction([
-      this.prisma.supplier.findMany({
-        where,
-        include: {
-          integration: {
-            select: {
-              status: true,
-              kind: true,
-              lastHealthOk: true,
-              lastHealthCheckAt: true,
-            },
-          },
-          _count: { select: { services: true } },
-        },
-        orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
-        skip: (q.page - 1) * q.pageSize,
-        take: q.pageSize,
-      }),
-      this.prisma.supplier.count({ where }),
+      this.prisma.company.findMany({ where, include: companyInclude, orderBy: orderArgs(q, ['name', 'createdAt'] as const, 'name'), ...pageArgs(q) }),
+      this.prisma.company.count({ where }),
     ]);
-    return paginate(
-      rows.map(({ _count, integration, ...s }) => ({
-        ...s,
-        trips: _count.services,
-        // Never credentials: only the connection state. Restaurants are always manual.
-        integration: integration ?? { status: 'NOT_CONFIGURED' },
-      })),
-      total,
-      q.page,
-      q.pageSize,
-    );
+    return paginate(rows, total, q);
   }
 
-  /** Supplier profile with, per trip: what the office owes (cost × confirmed passengers), paid, remaining. */
-  async get(user: AuthUser, id: string) {
-    const { officeId } = officeUser(user);
-    const supplier = await this.prisma.supplier.findFirst({
-      where: { id, officeId },
-      include: {
-        integration: {
-          select: {
-            status: true,
-            kind: true,
-            externalSupplierId: true,
-            lastHealthOk: true,
-            lastHealthCheckAt: true,
-            lastError: true,
-          },
-        },
-        services: {
-          include: {
-            trip: {
-              select: {
-                id: true,
-                code: true,
-                departureDate: true,
-                status: true,
-                confirmedSeats: true,
-                currencyCode: true,
-                tour: { select: { name: true } },
-              },
-            },
-          },
-          orderBy: { trip: { departureDate: 'desc' } },
-        },
-        payments: {
-          orderBy: { paidAt: 'desc' },
-          include: {
-            trip: { select: { code: true } },
-            recordedBy: { select: { user: { select: { fullName: true } } } },
-          },
-        },
-      },
+  async company(id: string) {
+    const c = await this.prisma.company.findUnique({ where: { id }, include: { ...companyInclude, profitRules: true } });
+    if (!c) throw new NotFoundException('Company not found');
+    return c;
+  }
+
+  async createCompany(user: AuthUser, dto: CompanyDto) {
+    const service = await this.prisma.service.findFirst({ where: { id: dto.serviceId, isActive: true } });
+    if (!service) throw new NotFoundException('Service not found or disabled');
+    this.assertTransportMode(service.kind, dto.transportMode);
+    await this.assertPlace(dto.countryId, dto.cityId);
+    const c = await this.prisma.company.create({ data: { ...dto, transportMode: service.kind === 'TRANSPORT' ? dto.transportMode : null }, include: companyInclude });
+    await this.audit.log(user, { action: 'company.created', entityType: 'company', entityId: c.id, summary: `${service.nameEn} company "${c.name}" added`, changes: { after: dto } });
+    return c;
+  }
+
+  async updateCompany(user: AuthUser, id: string, dto: UpdateCompanyDto) {
+    const before = await this.company(id);
+    if (dto.transportMode !== undefined) this.assertTransportMode(before.service.kind, dto.transportMode);
+    if (dto.countryId || dto.cityId) await this.assertPlace(dto.countryId ?? before.countryId, dto.cityId ?? before.cityId ?? undefined);
+    const c = await this.prisma.company.update({ where: { id }, data: dto, include: companyInclude });
+    await this.audit.log(user, { action: 'company.updated', entityType: 'company', entityId: id, summary: `Company "${c.name}" updated`, changes: diff(before as never, dto as never) });
+    return c;
+  }
+
+  /** Deactivated companies disappear from selectors; existing trips keep their snapshot (SUP-07). */
+  async setCompanyActive(user: AuthUser, id: string, isActive: boolean) {
+    const c = await this.prisma.company.update({ where: { id }, data: { isActive }, include: companyInclude });
+    await this.audit.log(user, { action: isActive ? 'company.activated' : 'company.deactivated', entityType: 'company', entityId: id, summary: `Company "${c.name}" ${isActive ? 'activated' : 'deactivated'}` });
+    return c;
+  }
+
+  async deleteCompany(user: AuthUser, id: string) {
+    const c = await this.company(id);
+    const used = await this.prisma.companyItem.count({ where: { companyId: id, OR: [{ tripLines: { some: {} } }, { offerLines: { some: {} } }] } });
+    const requested = await this.prisma.customTripRequestItem.count({ where: { companyId: id } });
+    if (used || requested) throw new ConflictException('This company is used by trips, offers or requests; deactivate it instead (SUP-07)');
+    await this.prisma.$transaction([this.prisma.companyItem.deleteMany({ where: { companyId: id } }), this.prisma.company.delete({ where: { id } })]);
+    await this.audit.log(user, { action: 'company.deleted', entityType: 'company', entityId: id, summary: `Company "${c.name}" deleted` });
+    return { deleted: true };
+  }
+
+  // ---------------- items (SUP-05, SUP-06)
+  async items(companyId: string, q: ItemQueryDto) {
+    await this.company(companyId);
+    const where: Prisma.CompanyItemWhereInput = {
+      companyId,
+      ...(q.isActive !== undefined ? { isActive: q.isActive } : {}),
+      ...(q.currencyCode ? { currencyCode: q.currencyCode } : {}),
+      ...(q.search ? { OR: [{ name: ilike(q.search) }, { description: ilike(q.search) }] } : {}),
+    };
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.companyItem.findMany({ where, include: itemInclude, orderBy: orderArgs(q, ['name', 'costPerPerson', 'createdAt'] as const, 'name'), ...pageArgs(q) }),
+      this.prisma.companyItem.count({ where }),
+    ]);
+    return paginate(rows, total, q);
+  }
+
+  async createItem(user: AuthUser, companyId: string, dto: ItemDto) {
+    const company = await this.company(companyId);
+    await this.assertItemPlaces(company.service.kind, dto);
+    await this.assertCurrency(dto.currencyCode);
+    const item = await this.prisma.companyItem.create({
+      data: { ...dto, companyId, costPerPerson: toMoney(dto.costPerPerson), source: 'MANUAL' },
+      include: itemInclude,
     });
-    if (!supplier) throw new NotFoundException('Supplier not found');
-
-    const paidByTrip = new Map<string, ReturnType<typeof D>>();
-    for (const p of supplier.payments)
-      if (p.tripId)
-        paidByTrip.set(
-          p.tripId,
-          (paidByTrip.get(p.tripId) ?? D(0)).add(D(p.amount)),
-        );
-
-    const dues = supplier.services
-      .filter((s) => s.trip.status !== 'CANCELLED')
-      .map((s) => {
-        const due = D(s.costPerPerson).mul(s.trip.confirmedSeats);
-        const paid = paidByTrip.get(s.trip.id) ?? D(0);
-        return {
-          trip: s.trip,
-          serviceType: s.serviceType,
-          costPerPerson: toMoney(s.costPerPerson),
-          passengers: s.trip.confirmedSeats,
-          currencyCode: s.trip.currencyCode,
-          due: toMoney(due),
-          paid: toMoney(paid),
-          remaining: toMoney(due.sub(paid)),
-        };
-      });
-    return { ...supplier, dues };
+    await this.audit.log(user, { action: 'item.created', entityType: 'company_item', entityId: item.id, summary: `Item "${item.name}" added to ${company.name}`, changes: { after: dto } });
+    return item;
   }
 
-  async create(user: AuthUser, dto: CreateSupplierDto) {
-    const { officeId } = officeUser(user);
+  async updateItem(user: AuthUser, itemId: string, dto: UpdateItemDto) {
+    const before = await this.prisma.companyItem.findUnique({ where: { id: itemId }, include: { company: { include: { service: true } } } });
+    if (!before) throw new NotFoundException('Item not found');
+    if (before.source === 'INTEGRATION' && (dto.costPerPerson !== undefined || dto.currencyCode !== undefined))
+      throw new BadRequestException('The cost of an integration item comes from the supplier and cannot be edited (SUP-06)');
+    await this.assertItemPlaces(before.company.service.kind, { fromCityId: dto.fromCityId ?? before.fromCityId ?? undefined, toCityId: dto.toCityId ?? before.toCityId ?? undefined });
+    if (dto.currencyCode) await this.assertCurrency(dto.currencyCode);
     return this.prisma.$transaction(async (tx) => {
-      const s = await tx.supplier.create({ data: { ...dto, officeId } });
-      await this.audit.log(
-        user,
-        {
-          action: 'supplier.created',
-          entityType: 'supplier',
-          entityId: s.id,
-          summary: `Added ${dto.type.toLowerCase()} supplier ${dto.name}`,
-        },
-        tx,
-      );
-      return s;
+      const item = await tx.companyItem.update({ where: { id: itemId }, data: { ...dto, costPerPerson: dto.costPerPerson ? toMoney(dto.costPerPerson) : undefined }, include: itemInclude });
+      const costChanged = dto.costPerPerson !== undefined && !D(dto.costPerPerson).eq(before.costPerPerson);
+      const flagged = costChanged ? await flagCostChange(tx, [itemId]) : 0;
+      await this.audit.log(user, { action: 'item.updated', entityType: 'company_item', entityId: itemId, summary: `Item "${item.name}" updated${flagged ? ` (${flagged} trip(s) flagged for review)` : ''}`, changes: diff(before as never, dto as never) }, tx);
+      return item;
     });
   }
 
-  async update(user: AuthUser, id: string, dto: UpdateSupplierDto) {
-    const s = await this.owned(user, id);
-    if (dto.type && dto.type !== s.type) {
-      const used = await this.prisma.tripService.count({
-        where: { supplierId: id },
-      });
-      if (used)
-        throw new ConflictException(
-          'The type of a supplier used in trips cannot change',
-        );
-    }
-    return this.prisma.supplier.update({ where: { id }, data: dto });
+  async setItemActive(user: AuthUser, itemId: string, isActive: boolean) {
+    const item = await this.prisma.companyItem.update({ where: { id: itemId }, data: { isActive }, include: itemInclude });
+    await this.audit.log(user, { action: isActive ? 'item.activated' : 'item.deactivated', entityType: 'company_item', entityId: itemId, summary: `Item "${item.name}" ${isActive ? 'activated' : 'deactivated'}` });
+    return item;
   }
 
-  async remove(user: AuthUser, id: string) {
-    const s = await this.owned(user, id);
-    const used = await this.prisma.tripService.count({
-      where: { supplierId: id },
-    });
-    if (used)
-      throw new ConflictException(
-        'This supplier is used in trips. Deactivate it instead.',
-      );
-    await this.prisma.supplier.delete({ where: { id } });
-    await this.audit.log(user, {
-      action: 'supplier.deleted',
-      entityType: 'supplier',
-      entityId: id,
-      summary: `Deleted supplier ${s.name}`,
-    });
+  async deleteItem(user: AuthUser, itemId: string) {
+    const item = await this.prisma.companyItem.findUnique({ where: { id: itemId }, include: { _count: { select: { tripLines: true, offerLines: true } } } });
+    if (!item) throw new NotFoundException('Item not found');
+    if (item._count.tripLines || item._count.offerLines) throw new ConflictException('This item is used by trips or offers; deactivate it instead (SUP-07)');
+    await this.prisma.companyItem.delete({ where: { id: itemId } });
+    await this.audit.log(user, { action: 'item.deleted', entityType: 'company_item', entityId: itemId, summary: `Item "${item.name}" deleted` });
     return { deleted: true };
   }
 
   /**
-   * Records money the office paid a supplier (e.g. the coach company's net share).
-   * With a trip: same currency as the trip, and never more than the most the office could owe
-   * (cost per person × maximum seats). Open decision: whether advances above current dues are allowed.
+   * Items to pick when building a trip or offer: active items of active companies of a service,
+   * optionally filtered by transport mode, currency and route (TRP-07).
    */
-  async pay(user: AuthUser, supplierId: string, dto: SupplierPaymentDto) {
-    const u = officeUser(user);
-    const supplier = await this.owned(user, supplierId);
-    const amount = D(dto.amount);
-    if (amount.lte(0))
-      throw new BadRequestException('Amount must be greater than zero');
-    const currency = dto.currencyCode.toUpperCase();
-
-    if (dto.tripId) {
-      const service = await this.prisma.tripService.findFirst({
-        where: { tripId: dto.tripId, supplierId, officeId: u.officeId },
-        include: { trip: true },
-      });
-      if (!service)
-        throw new BadRequestException(
-          'This supplier does not provide a service on that trip',
-        );
-      if (currency !== service.trip.currencyCode)
-        throw new BadRequestException(
-          `Payments for trip ${service.trip.code} must be in ${service.trip.currencyCode}`,
-        );
-      const paid = await this.prisma.supplierPayment.aggregate({
-        where: { tripId: dto.tripId, supplierId },
-        _sum: { amount: true },
-      });
-      const ceiling = D(service.costPerPerson)
-        .mul(service.trip.maxSeats)
-        .sub(D(paid._sum.amount));
-      if (amount.gt(ceiling))
-        throw new BadRequestException(
-          `This would exceed the maximum owed for this trip (${toMoney(ceiling)} ${currency} left)`,
-        );
-    } else if (
-      !(await this.prisma.officeCurrency.findUnique({
-        where: {
-          officeId_currencyCode: {
-            officeId: u.officeId,
-            currencyCode: currency,
-          },
+  async catalog(params: { serviceId?: string; transportMode?: TransportMode; currencyCode?: string; fromCityId?: string; toCityId?: string; companyId?: string }) {
+    return this.prisma.companyItem.findMany({
+      where: {
+        isActive: true,
+        company: {
+          isActive: true,
+          ...(params.serviceId ? { serviceId: params.serviceId } : {}),
+          ...(params.transportMode ? { transportMode: params.transportMode } : {}),
+          ...(params.companyId ? { id: params.companyId } : {}),
         },
-      }))
-    ) {
-      throw new BadRequestException(
-        `The office does not work with ${currency}`,
-      );
+        ...(params.currencyCode ? { currencyCode: params.currencyCode } : {}),
+        ...(params.fromCityId ? { fromCityId: params.fromCityId } : {}),
+        ...(params.toCityId ? { toCityId: params.toCityId } : {}),
+      },
+      include: itemInclude,
+      orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }],
+      take: 500,
+    });
+  }
+
+  // ---------------- profit rules (PRC-02)
+  profitRules() {
+    return this.prisma.profitRule.findMany({
+      include: { service: { select: { id: true, nameAr: true, nameEn: true, kind: true } }, company: { select: { id: true, name: true } } },
+      orderBy: [{ service: { createdAt: 'asc' } }, { companyId: { sort: 'asc', nulls: 'first' } }],
+    });
+  }
+
+  async upsertProfitRule(user: AuthUser, dto: ProfitRuleDto) {
+    if (dto.mode === 'PERCENT' && dto.value > 1000) throw new BadRequestException('A percentage above 1000% looks like a mistake');
+    if (dto.companyId) {
+      const company = await this.company(dto.companyId);
+      if (company.serviceId !== dto.serviceId) throw new BadRequestException('The company does not provide this service');
     }
-
-    return this.prisma.$transaction(async (tx) => {
-      const payment = await tx.supplierPayment.create({
-        data: {
-          officeId: u.officeId,
-          supplierId,
-          tripId: dto.tripId,
-          amount: toMoney(amount),
-          currencyCode: currency,
-          paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
-          reference: dto.reference,
-          notes: dto.notes,
-          recordedById: u.memberId,
-        },
-      });
-      await this.audit.log(
-        user,
-        {
-          action: 'supplier.paid',
-          entityType: 'supplier',
-          entityId: supplierId,
-          summary: `Paid ${toMoney(amount)} ${currency} to ${supplier.name}`,
-          metadata: { tripId: dto.tripId },
-        },
-        tx,
-      );
-      return payment;
-    });
+    const existing = await this.prisma.profitRule.findFirst({ where: { serviceId: dto.serviceId, companyId: dto.companyId ?? null } });
+    const data = { serviceId: dto.serviceId, companyId: dto.companyId ?? null, mode: dto.mode, value: toMoney(dto.value) };
+    const rule = existing ? await this.prisma.profitRule.update({ where: { id: existing.id }, data }) : await this.prisma.profitRule.create({ data });
+    await this.audit.log(user, { action: 'profit_rule.saved', entityType: 'profit_rule', entityId: rule.id, summary: `Default profit set to ${dto.value}${dto.mode === 'PERCENT' ? '%' : ''}`, changes: { before: existing, after: data } });
+    return rule;
   }
 
-  private async owned(user: AuthUser, id: string) {
-    const s = await this.prisma.supplier.findFirst({
-      where: { id, officeId: officeUser(user).officeId },
-    });
-    if (!s) throw new NotFoundException('Supplier not found');
-    return s;
+  async deleteProfitRule(user: AuthUser, id: string) {
+    await this.prisma.profitRule.delete({ where: { id } });
+    await this.audit.log(user, { action: 'profit_rule.deleted', entityType: 'profit_rule', entityId: id, summary: 'Default profit rule removed' });
+    return { deleted: true };
+  }
+
+  /** Company rule, else service rule, else 0% (PRC-02). */
+  async defaultProfit(db: Tx | PrismaService, serviceId: string, companyId: string): Promise<{ mode: ProfitMode; value: string }> {
+    const rules = await db.profitRule.findMany({ where: { serviceId, OR: [{ companyId }, { companyId: null }] } });
+    const rule = rules.find((r) => r.companyId === companyId) ?? rules.find((r) => r.companyId === null);
+    return rule ? { mode: rule.mode, value: rule.value.toString() } : { mode: 'PERCENT', value: '0' };
+  }
+
+  // ---------------- validation helpers
+  private assertTransportMode(kind: ServiceKind | string, mode: TransportMode | null | undefined) {
+    if (kind === 'TRANSPORT' && !mode) throw new BadRequestException('Choose land, sea or air for a transport company (SUP-03)');
+    if (kind !== 'TRANSPORT' && mode) throw new BadRequestException('Only transport companies have a transport mode (SUP-03)');
+  }
+
+  private async assertItemPlaces(kind: string, dto: { fromCityId?: string; toCityId?: string }) {
+    if (kind === 'TRANSPORT') {
+      if (!dto.fromCityId || !dto.toCityId) throw new BadRequestException('A transport item needs a departure and an arrival city');
+      if (dto.fromCityId === dto.toCityId) throw new BadRequestException('Departure and arrival must be different cities');
+    } else if (dto.fromCityId) {
+      throw new BadRequestException('Only transport items have a departure city; use the arrival/location city');
+    }
+    const ids = [dto.fromCityId, dto.toCityId].filter(Boolean) as string[];
+    if (ids.length) {
+      const found = await this.prisma.city.count({ where: { id: { in: ids }, isActive: true } });
+      if (found !== new Set(ids).size) throw new NotFoundException('City not found or disabled');
+    }
+  }
+
+  private async assertPlace(countryId: string, cityId?: string) {
+    const country = await this.prisma.country.findFirst({ where: { id: countryId, isActive: true } });
+    if (!country) throw new NotFoundException('Country not found or disabled');
+    if (cityId && !(await this.prisma.city.findFirst({ where: { id: cityId, countryId, isActive: true } })))
+      throw new BadRequestException('The city does not belong to the chosen country');
+  }
+
+  private async assertCurrency(code: string) {
+    if (!(await this.prisma.currency.findUnique({ where: { code } }))) throw new NotFoundException('Unknown currency');
   }
 }
 
-@ApiTags('Suppliers')
+// ------------------------------------------------------------------ controller
+
+/** PRC-06: supplier costs are visible only with pricing.view_breakdown (Admin by default). */
+function maskCost<T extends { costPerPerson: unknown }>(user: AuthUser, rows: T[]): T[] {
+  if (user.permissions.includes('pricing.view_breakdown')) return rows;
+  return rows.map((r) => ({ ...r, costPerPerson: null }));
+}
+
+export class CatalogQueryDto {
+  @ApiPropertyOptional() @IsOptional() @IsUUID() serviceId?: string;
+  @ApiPropertyOptional({ enum: TRANSPORT_MODES }) @IsOptional() @IsIn(TRANSPORT_MODES) transportMode?: TransportMode;
+  @ApiPropertyOptional() @IsOptional() @IsString() @Length(3, 3) currencyCode?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() fromCityId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() toCityId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() companyId?: string;
+}
+
+@ApiTags('Services, companies & items')
 @ApiBearerAuth()
-@Controller('suppliers')
+@Controller()
 export class SuppliersController {
-  constructor(private readonly suppliers: SuppliersService) {}
+  constructor(
+    private readonly suppliers: SuppliersService,
+    private readonly exporter: ExportService,
+  ) {}
 
-  @Get()
-  @RequirePermissions('suppliers.view')
-  @ApiOperation({
-    summary:
-      'Hotels, transport companies and restaurants with integration status (never secrets)',
-  })
-  list(@CurrentUser() user: AuthUser, @Query() q: SupplierQueryDto) {
-    return this.suppliers.list(user, q);
+  @Get('services')
+  @RequirePermissions('companies.view')
+  services() {
+    return this.suppliers.services();
   }
 
-  @Get(':id')
-  @RequirePermissions('suppliers.view')
-  @ApiOperation({
-    summary:
-      'Supplier with trips served, dues (cost × confirmed passengers), paid and remaining',
-  })
-  get(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
-    return this.suppliers.get(user, id);
+  @Post('services')
+  @RequirePermissions('services.manage')
+  createService(@CurrentUser() user: AuthUser, @Body() dto: ServiceDto) {
+    return this.suppliers.createService(user, dto);
   }
 
-  @Post()
-  @RequirePermissions('suppliers.manage')
-  create(@CurrentUser() user: AuthUser, @Body() dto: CreateSupplierDto) {
-    return this.suppliers.create(user, dto);
+  @Patch('services/:id')
+  @RequirePermissions('services.manage')
+  updateService(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateServiceDto) {
+    return this.suppliers.updateService(user, id, dto);
   }
 
-  @Patch(':id')
-  @RequirePermissions('suppliers.manage')
-  update(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateSupplierDto,
-  ) {
-    return this.suppliers.update(user, id, dto);
+  @Patch('services/:id/active')
+  @RequirePermissions('services.manage')
+  setServiceActive(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ActiveDto) {
+    return this.suppliers.setServiceActive(user, id, dto.isActive);
   }
 
-  @Delete(':id')
-  @RequirePermissions('suppliers.manage')
-  remove(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    return this.suppliers.remove(user, id);
+  @Get('companies')
+  @RequirePermissions('companies.view')
+  @ApiOperation({ summary: 'Companies, filterable by service and transport mode (SUP-04). Supports export=xlsx|all.' })
+  async companies(@CurrentUser() user: AuthUser, @Query() q: CompanyQueryDto) {
+    return this.exporter.respond(q, await this.suppliers.companies(q), COMPANIES_EXPORT, user);
   }
 
-  @Post(':id/payments')
-  @RequirePermissions('suppliers.pay')
-  @ApiOperation({
-    summary: 'Record a payment from the office to this supplier',
-  })
-  pay(
-    @CurrentUser() user: AuthUser,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SupplierPaymentDto,
-  ) {
-    return this.suppliers.pay(user, id, dto);
+  @Get('companies/:id')
+  @RequirePermissions('companies.view')
+  company(@Param('id', ParseUUIDPipe) id: string) {
+    return this.suppliers.company(id);
+  }
+
+  @Post('companies')
+  @RequirePermissions('companies.manage')
+  createCompany(@CurrentUser() user: AuthUser, @Body() dto: CompanyDto) {
+    return this.suppliers.createCompany(user, dto);
+  }
+
+  @Patch('companies/:id')
+  @RequirePermissions('companies.manage')
+  updateCompany(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCompanyDto) {
+    return this.suppliers.updateCompany(user, id, dto);
+  }
+
+  @Patch('companies/:id/active')
+  @RequirePermissions('companies.manage')
+  setCompanyActive(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ActiveDto) {
+    return this.suppliers.setCompanyActive(user, id, dto.isActive);
+  }
+
+  @Delete('companies/:id')
+  @RequirePermissions('companies.manage')
+  @ApiOperation({ summary: 'Delete an unused company (otherwise deactivate, SUP-07)' })
+  deleteCompany(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.suppliers.deleteCompany(user, id);
+  }
+
+  @Get('companies/:id/items')
+  @RequirePermissions('companies.view')
+  async items(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Query() q: ItemQueryDto) {
+    const page = await this.suppliers.items(id, q);
+    return this.exporter.respond(q, { ...page, data: maskCost(user, page.data) }, ITEMS_EXPORT, user);
+  }
+
+  @Post('companies/:id/items')
+  @RequirePermissions('companies.manage')
+  createItem(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ItemDto) {
+    return this.suppliers.createItem(user, id, dto);
+  }
+
+  @Patch('items/:id')
+  @RequirePermissions('companies.manage')
+  updateItem(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateItemDto) {
+    return this.suppliers.updateItem(user, id, dto);
+  }
+
+  @Patch('items/:id/active')
+  @RequirePermissions('companies.manage')
+  setItemActive(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: ActiveDto) {
+    return this.suppliers.setItemActive(user, id, dto.isActive);
+  }
+
+  @Delete('items/:id')
+  @RequirePermissions('companies.manage')
+  deleteItem(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.suppliers.deleteItem(user, id);
+  }
+
+  @Get('catalog')
+  @RequirePermissions('companies.view')
+  @ApiOperation({ summary: 'Bookable items of active companies, by service / transport mode / currency / route (TRP-07)' })
+  async catalog(@CurrentUser() user: AuthUser, @Query() q: CatalogQueryDto) {
+    return maskCost(user, await this.suppliers.catalog(q));
+  }
+
+  @Get('profit-rules')
+  @RequirePermissions('pricing.set_profit')
+  profitRules() {
+    return this.suppliers.profitRules();
+  }
+
+  @Put('profit-rules')
+  @RequirePermissions('pricing.set_profit')
+  @ApiOperation({ summary: 'Create or replace the default profit of a service (or a company of it), PRC-02' })
+  upsertProfitRule(@CurrentUser() user: AuthUser, @Body() dto: ProfitRuleDto) {
+    return this.suppliers.upsertProfitRule(user, dto);
+  }
+
+  @Delete('profit-rules/:id')
+  @RequirePermissions('pricing.set_profit')
+  deleteProfitRule(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.suppliers.deleteProfitRule(user, id);
   }
 }
 
-@Module({ controllers: [SuppliersController], providers: [SuppliersService] })
+@Module({ controllers: [SuppliersController], providers: [SuppliersService], exports: [SuppliersService] })
 export class SuppliersModule {}

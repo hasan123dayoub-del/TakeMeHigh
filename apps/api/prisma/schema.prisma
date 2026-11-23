@@ -1,7 +1,10 @@
 // =====================================================================================
-//  Safarni (سفرني) — multi-tenant SaaS for tourism offices
-//  PostgreSQL + Prisma 7. Every business table carries office_id (tenant) and, where the
-//  business rule requires it, branch_id. Money is NUMERIC(14,2); never floating point.
+//  TakeMeHigh — travel agency operations system (single-tenant)
+//  One installation = one tourism office. There is no tenant/office table: isolation is
+//  between BRANCHES of the office (see docs/srs/takemehigh, BR-01, BR-02).
+//  PostgreSQL + Prisma 7. Money is NUMERIC(14,2), never floating point.
+//  Extra constraints Prisma cannot express (CHECKs, immutability triggers, the
+//  v_trip_passengers view) live in the SQL of the init migration.
 // =====================================================================================
 
 generator client {
@@ -16,242 +19,184 @@ datasource db {
 
 // ------------------------------------------------------------------ enums
 
+/// Data reach of a role (AUTH-08): ALL = every branch (Admin), BRANCH = own branch, ASSIGNED = assigned trips (guide)
 enum RoleScope {
-  OFFICE // sees every branch of the office (e.g. Admin)
-  BRANCH // limited to the member's own branch (e.g. Reception)
+  ALL
+  BRANCH
+  ASSIGNED
 }
 
-enum SupplierType {
+enum CityKind {
+  GOVERNORATE
+  CITY
+  TOURIST_SPOT
+}
+
+/// Built-in behaviour of a service type. Custom services use OTHER.
+enum ServiceKind {
   HOTEL
   TRANSPORT
   RESTAURANT
+  OTHER
 }
 
-enum TripType {
-  VIP
-  STANDARD
+enum TransportMode {
+  LAND
+  SEA
+  AIR
 }
 
-enum TripStatus {
-  DRAFT // being prepared, not bookable
-  OPEN // registration open, bookable
-  REGISTRATION_CLOSED // deadline passed, waiting for the admin decision
-  APPROVED // admin approved execution; confirmations still allowed until full
-  COMPLETED
+enum ItemSource {
+  INTEGRATION
+  MANUAL
+}
+
+enum ProfitMode {
+  PERCENT
+  FIXED
+}
+
+enum IntegrationStatus {
+  NOT_CONFIGURED
+  ACTIVE
+  ERROR
+  DISABLED
+}
+
+enum SyncResult {
+  SUCCESS
+  FAILED
+}
+
+enum SyncTrigger {
+  SCHEDULED
+  MANUAL
+}
+
+enum TravelScope {
+  DOMESTIC
+  INTERNATIONAL
+}
+
+enum ProductStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CONFIRMED
   CANCELLED
+  COMPLETED
 }
 
-enum RegistrationDecisionType {
-  APPROVE
-  CANCEL
+enum ClosureReason {
+  DEADLINE
+  MANUAL
+}
+
+enum DecisionType {
+  CONFIRM
   EXTEND
+  CANCEL
+  REOPEN
+}
+
+enum OfferKind {
+  BUNDLE
+  DISCOUNT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum DocumentType {
+  SYRIAN_ID
+  PASSPORT
+  VISA
+  RESIDENCE
 }
 
 enum BookingStatus {
-  PENDING // does NOT consume seats
-  CONFIRMED // consumes seats
-  WAITING_LIST // does NOT consume seats
-  CANCELLED // releases seats
+  PENDING
+  CONFIRMED
+  WAITLIST
+  CANCELLED
 }
 
 enum BookingEventType {
   CREATED
-  EDITED
   CONFIRMED
   WAITLISTED
+  PROMOTED
   CANCELLED
   TRANSFERRED
   PASSENGERS_UPDATED
+  PAYMENT
+  REFUND
+}
+
+enum Attendance {
+  PRESENT
+  ABSENT
+}
+
+enum VisaStatus {
+  NOT_STARTED
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum PaymentKind {
+  PARTIAL
+  FULL
+  REFUND
 }
 
 enum PaymentMethod {
   CASH
 }
 
-enum DiscountType {
-  PERCENTAGE
-  FIXED
+enum RequestStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  REJECTED
 }
 
-enum DocumentType {
-  NATIONAL_ID
-  PASSPORT
-  FAMILY_BOOK
-  BIRTH_CERTIFICATE
-  OTHER
+enum SlideLink {
+  NONE
+  TRIP
+  PROGRAM
+  OFFER
 }
 
-enum Locale {
-  AR
-  EN
-}
+// ------------------------------------------------------------------ access
 
-/// Which external supplier system an integration talks to.
-enum IntegrationKind {
-  HOTEL
-  TRANSPORT
-}
-
-enum IntegrationStatus {
-  NOT_CONFIGURED // manual supplier (no API) — the default, and always the case for restaurants
-  CONFIGURED // settings saved, not verified yet
-  ACTIVE // health check passed
-  DISABLED
-  ERROR // last health check failed
-}
-
-/// External reservation lifecycle. Independent from the internal BookingStatus on purpose:
-/// an internally confirmed booking is NOT automatically confirmed by the hotel or coach company.
-enum ExternalReservationStatus {
-  NOT_REQUESTED
-  CHECKING_AVAILABILITY
-  AVAILABLE
-  UNAVAILABLE
-  PENDING // sent, provider has not confirmed yet
-  CONFIRMED
-  FAILED // provider rejected; safe to retry with a new attempt
-  UNKNOWN // timeout/network error after sending: provider MAY have processed it → reconcile, never blind-retry
-  CANCELLATION_PENDING
-  CANCELLED
-  CANCELLATION_FAILED
-}
-
-enum IntegrationOperation {
-  HEALTH
-  SEARCH
-  DETAILS
-  AVAILABILITY
-  PRICING
-  RESERVE
-  GET_RESERVATION
-  CANCEL
-}
-
-// ------------------------------------------------------------------ identity & organisation
-
-model User {
-  id              String    @id @default(uuid()) @db.Uuid
-  email           String    @unique @db.VarChar(190)
-  phone           String?   @db.VarChar(40)
-  fullName        String    @map("full_name") @db.VarChar(120)
-  passwordHash    String    @map("password_hash") @db.VarChar(255)
-  /// Safarni platform staff (manages offices, not office data)
-  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin")
-  isActive        Boolean   @default(true) @map("is_active")
-  locale          Locale    @default(AR)
-  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(3)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  membership    OfficeMember?
-  refreshTokens RefreshToken[]
-  auditLogs     AuditLog[]
-
-  @@map("users")
-}
-
-model Office {
-  id                  String   @id @default(uuid()) @db.Uuid
-  name                String   @db.VarChar(150)
-  /// Public URL: /{slug}
-  slug                String   @unique @db.VarChar(80)
-  description         String?
-  phone               String?  @db.VarChar(40)
-  whatsappNumber      String?  @map("whatsapp_number") @db.VarChar(40)
-  email               String?  @db.VarChar(190)
-  city                String?  @db.VarChar(100)
-  country             String   @default("SY") @db.Char(2)
-  address             String?  @db.VarChar(255)
-  latitude            Decimal? @db.Decimal(9, 6)
-  longitude           Decimal? @db.Decimal(9, 6)
-  logoUrl             String?  @map("logo_url") @db.VarChar(500)
-  coverImageUrl       String?  @map("cover_image_url") @db.VarChar(500)
-  brandColor          String   @default("#3F70AB") @map("brand_color") @db.VarChar(9)
-  defaultCurrencyCode String   @default("SYP") @map("default_currency_code") @db.Char(3)
-  defaultLocale       Locale   @default(AR) @map("default_locale")
-  /// Optional public page + appearance on the Safarni showcase
-  publicPageEnabled   Boolean  @default(false) @map("public_page_enabled")
-  bookingTerms        String?  @map("booking_terms")
-  cancellationTerms   String?  @map("cancellation_terms")
-  isActive            Boolean  @default(true) @map("is_active")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  defaultCurrency      Currency              @relation(fields: [defaultCurrencyCode], references: [code])
-  branches             Branch[]
-  members              OfficeMember[]
-  roles                Role[]
-  currencies           OfficeCurrency[]
-  tourCategories       TourCategory[]
-  tours                Tour[]
-  trips                Trip[]
-  suppliers            Supplier[]
-  supplierPayments     SupplierPayment[]
-  customers            Customer[]
-  bookings             Booking[]
-  payments             Payment[]
-  refunds              Refund[]
-  offers               TripOffer[]
-  banners              PromoBanner[]
-  auditLogs            AuditLog[]
-  integrations         SupplierIntegration[]
-  externalReservations ExternalReservation[]
-  integrationLogs      IntegrationLog[]
-
-  @@map("offices")
-}
-
-model Branch {
-  id        String   @id @default(uuid()) @db.Uuid
-  officeId  String   @map("office_id") @db.Uuid
-  name      String   @db.VarChar(120)
-  city      String?  @db.VarChar(100)
-  address   String?  @db.VarChar(255)
-  phone     String?  @db.VarChar(40)
-  latitude  Decimal? @db.Decimal(9, 6)
-  longitude Decimal? @db.Decimal(9, 6)
-  isMain    Boolean  @default(false) @map("is_main")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  office   Office         @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  members  OfficeMember[]
-  trips    Trip[]
-  bookings Booking[]
-  payments Payment[]
-
-  @@unique([officeId, name])
-  /// lets child tables reference (office_id, branch_id) so a row can never point to another office's branch
-  @@unique([officeId, id])
-  @@map("branches")
-}
-
-/// Configurable per office. Seeded with "Admin" (OFFICE scope) and "Reception" (BRANCH scope).
 model Role {
   id          String    @id @default(uuid()) @db.Uuid
-  officeId    String    @map("office_id") @db.Uuid
-  name        String    @db.VarChar(60)
+  /// ADMIN, BRANCH_MANAGER, EMPLOYEE, TOUR_GUIDE (system) or a custom code
+  code        String    @unique @db.VarChar(40)
+  nameAr      String    @map("name_ar") @db.VarChar(60)
+  nameEn      String    @map("name_en") @db.VarChar(60)
   description String?   @db.VarChar(255)
-  scope       RoleScope @default(BRANCH)
-  /// Seeded roles cannot be deleted (they can still be edited)
+  scope       RoleScope
+  /// System roles cannot be deleted; ADMIN's permissions cannot be reduced (AUTH-04, AUTH-06)
   isSystem    Boolean   @default(false) @map("is_system")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office      Office           @relation(fields: [officeId], references: [id], onDelete: Cascade)
   permissions RolePermission[]
-  members     OfficeMember[]
+  users       User[]
 
-  @@unique([officeId, name])
   @@map("roles")
 }
 
-/// Global catalogue of permission keys, e.g. "bookings.confirm".
+/// Global catalogue of permission codes "module.action" (AUTH-05).
 model Permission {
   id          String  @id @default(uuid()) @db.Uuid
-  key         String  @unique @db.VarChar(60)
-  group       String  @db.VarChar(40)
+  code        String  @unique @db.VarChar(60)
+  module      String  @db.VarChar(40)
   description String? @db.VarChar(255)
 
   roles RolePermission[]
@@ -270,32 +215,51 @@ model RolePermission {
   @@map("role_permissions")
 }
 
-/// Employment of a user in an office. An employee belongs to exactly ONE branch.
-model OfficeMember {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @unique @map("user_id") @db.Uuid
-  officeId  String   @map("office_id") @db.Uuid
-  branchId  String   @map("branch_id") @db.Uuid
-  roleId    String   @map("role_id") @db.Uuid
-  jobTitle  String?  @map("job_title") @db.VarChar(80)
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// Admin, branch manager, employee or tour guide. branch_id IS NULL ⇔ role = ADMIN (CHECK via trigger).
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  roleId             String    @map("role_id") @db.Uuid
+  branchId           String?   @map("branch_id") @db.Uuid
+  fullName           String    @map("full_name") @db.VarChar(120)
+  email              String    @unique @db.VarChar(190)
+  phone              String?   @db.VarChar(40)
+  passwordHash       String    @map("password_hash") @db.VarChar(255)
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  failedLoginCount   Int       @default(0) @map("failed_login_count") @db.SmallInt
+  lockedUntil        DateTime? @map("locked_until") @db.Timestamptz(3)
+  isActive           Boolean   @default(true) @map("is_active")
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  office           Office                     @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  branch           Branch                     @relation(fields: [officeId, branchId], references: [officeId, id])
-  role             Role                       @relation(fields: [roleId], references: [id])
-  supervisedTrips  TripSupervisor[]
-  decisions        TripRegistrationDecision[]
-  bookingsCreated  Booking[]                  @relation("BookingCreatedBy")
+  role             Role                   @relation(fields: [roleId], references: [id])
+  branch           Branch?                @relation(fields: [branchId], references: [id])
+  guideProfile     GuideProfile?
+  refreshTokens    RefreshToken[]
+  auditLogs        AuditLog[]
+  guidedTrips      TripGuide[]
+  tripsCreated     Trip[]                 @relation("TripCreatedBy")
+  bookingsCreated  Booking[]              @relation("BookingCreatedBy")
   bookingEvents    BookingEvent[]
-  paymentsRecorded Payment[]
-  refundsRecorded  Refund[]
-  supplierPayments SupplierPayment[]
+  paymentsReceived Payment[]
+  decisions        RegistrationDecision[]
+  customersCreated Customer[]             @relation("CustomerCreatedBy")
+  requestsHandled  CustomTripRequest[]
 
-  @@index([officeId, branchId])
-  @@map("office_members")
+  @@index([branchId])
+  @@index([roleId])
+  @@map("users")
+}
+
+model GuideProfile {
+  userId    String  @id @map("user_id") @db.Uuid
+  languages String? @db.VarChar(200)
+  licenseNo String? @map("license_no") @db.VarChar(60)
+  bio       String? @db.VarChar(1000)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("guide_profiles")
 }
 
 model RefreshToken {
@@ -303,7 +267,7 @@ model RefreshToken {
   userId    String    @map("user_id") @db.Uuid
   /// SHA-256 of the opaque token; the raw token is never stored
   tokenHash String    @unique @map("token_hash") @db.Char(64)
-  /// Rotation family: reuse of a revoked token revokes the whole family
+  /// Rotation family: reuse of a revoked token revokes the whole family (AUTH-02)
   familyId  String    @map("family_id") @db.Uuid
   expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
   revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
@@ -318,600 +282,949 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-// ------------------------------------------------------------------ currencies
+// ------------------------------------------------------------------ geography & reference data
+
+/// Never deleted, only enabled/disabled (BR-11).
+model Country {
+  id        String   @id @default(uuid()) @db.Uuid
+  isoCode   String   @unique @map("iso_code") @db.Char(2)
+  nameAr    String   @map("name_ar") @db.VarChar(80)
+  nameEn    String   @map("name_en") @db.VarChar(80)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  cities          City[]
+  companies       Company[]
+  nationals       Customer[]
+  documentsIssued CustomerDocument[]
+  visas           VisaApplication[]
+
+  @@map("countries")
+}
+
+/// Governorates, cities and tourist spots. Never deleted, only enabled/disabled (BR-11).
+model City {
+  id        String   @id @default(uuid()) @db.Uuid
+  countryId String   @map("country_id") @db.Uuid
+  nameAr    String   @map("name_ar") @db.VarChar(100)
+  nameEn    String   @map("name_en") @db.VarChar(100)
+  kind      CityKind @default(CITY)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  country      Country             @relation(fields: [countryId], references: [id])
+  branches     Branch[]
+  companies    Company[]
+  itemsFrom    CompanyItem[]       @relation("ItemFrom")
+  itemsTo      CompanyItem[]       @relation("ItemTo")
+  tripsFrom    Trip[]              @relation("TripOrigin")
+  tripsTo      Trip[]              @relation("TripDestination")
+  linesFrom    TripServiceLine[]   @relation("LineFrom")
+  linesTo      TripServiceLine[]   @relation("LineTo")
+  pickupPoints TripPickupPoint[]
+  requestsFrom CustomTripRequest[] @relation("RequestOrigin")
+  requestsTo   CustomTripRequest[] @relation("RequestDestination")
+
+  @@unique([countryId, nameAr])
+  @@index([countryId, isActive])
+  @@map("cities")
+}
 
 model Currency {
   code     String @id @db.Char(3)
-  name     String @db.VarChar(60)
   nameAr   String @map("name_ar") @db.VarChar(60)
+  nameEn   String @map("name_en") @db.VarChar(60)
   symbol   String @db.VarChar(8)
   /// Display precision (SYP 0, USD 2). Storage is always NUMERIC(14,2).
   decimals Int    @default(2) @db.SmallInt
 
-  offices        Office[]
-  officeLinks    OfficeCurrency[]
-  trips          Trip[]
-  bookings       Booking[]
-  payments       Payment[]
-  refunds        Refund[]
-  supplierPaymts SupplierPayment[]
+  items    CompanyItem[]
+  trips    Trip[]
+  programs Program[]
+  offers   Offer[]
+  bookings Booking[]
+  payments Payment[]
 
   @@map("currencies")
 }
 
-model OfficeCurrency {
-  officeId     String @map("office_id") @db.Uuid
-  currencyCode String @map("currency_code") @db.Char(3)
-
-  office   Office   @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  currency Currency @relation(fields: [currencyCode], references: [code])
-
-  @@id([officeId, currencyCode])
-  @@map("office_currencies")
-}
-
-// ------------------------------------------------------------------ tours (reusable programs)
-
-model TourCategory {
+model TripCategory {
   id        String   @id @default(uuid()) @db.Uuid
-  officeId  String   @map("office_id") @db.Uuid
-  name      String   @db.VarChar(80)
-  nameAr    String?  @map("name_ar") @db.VarChar(80)
+  nameAr    String   @unique @map("name_ar") @db.VarChar(80)
+  nameEn    String   @map("name_en") @db.VarChar(80)
+  isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  tours  Tour[]
+  trips    Trip[]
+  programs Program[]
+  requests CustomTripRequest[]
 
-  @@unique([officeId, name])
-  @@map("tour_categories")
+  @@map("trip_categories")
 }
 
-/// The reusable program, e.g. "Damascus → Latakia, 4 days". Never mixed with Trip.
-model Tour {
-  id                 String   @id @default(uuid()) @db.Uuid
-  officeId           String   @map("office_id") @db.Uuid
-  categoryId         String?  @map("category_id") @db.Uuid
-  name               String   @db.VarChar(160)
-  slug               String   @db.VarChar(180)
-  destination        String   @db.VarChar(120)
-  description        String?
-  days               Int      @db.SmallInt
-  nights             Int      @db.SmallInt
-  accommodationInfo  String?  @map("accommodation_info")
-  transportationInfo String?  @map("transportation_info")
-  bookingTerms       String?  @map("booking_terms")
-  cancellationTerms  String?  @map("cancellation_terms")
-  coverImageUrl      String?  @map("cover_image_url") @db.VarChar(500)
-  isActive           Boolean  @default(true) @map("is_active")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+// ------------------------------------------------------------------ organisation
 
-  office    Office        @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  category  TourCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  itinerary TourDay[]
-  images    TourImage[]
+model Branch {
+  id            String   @id @default(uuid()) @db.Uuid
+  cityId        String   @map("city_id") @db.Uuid
+  name          String   @unique @db.VarChar(120)
+  address       String?  @db.VarChar(255)
+  phone         String?  @db.VarChar(40)
+  whatsapp      String?  @db.VarChar(40)
+  latitude      Decimal? @db.Decimal(9, 6)
+  longitude     Decimal? @db.Decimal(9, 6)
+  workingHours  String?  @map("working_hours") @db.VarChar(120)
+  showOnLanding Boolean  @default(true) @map("show_on_landing")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  city      City                @relation(fields: [cityId], references: [id])
+  users     User[]
   trips     Trip[]
+  programs  Program[]
+  customers Customer[]
+  bookings  Booking[]
+  payments  Payment[]
+  requests  CustomTripRequest[]
 
-  @@unique([officeId, slug])
-  @@unique([officeId, id])
-  @@index([officeId, categoryId])
-  @@map("tours")
+  @@map("branches")
 }
 
-model TourDay {
-  id          String  @id @default(uuid()) @db.Uuid
-  tourId      String  @map("tour_id") @db.Uuid
-  dayNumber   Int     @map("day_number") @db.SmallInt
-  title       String  @db.VarChar(160)
-  description String?
-  location    String? @db.VarChar(120)
+// ------------------------------------------------------------------ services, companies, pricing
 
-  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+/// HOTEL, TRANSPORT, RESTAURANT (system, never deleted) + future custom services (SUP-01).
+model Service {
+  id        String      @id @default(uuid()) @db.Uuid
+  code      String      @unique @db.VarChar(40)
+  kind      ServiceKind
+  nameAr    String      @map("name_ar") @db.VarChar(80)
+  nameEn    String      @map("name_en") @db.VarChar(80)
+  isSystem  Boolean     @default(false) @map("is_system")
+  isActive  Boolean     @default(true) @map("is_active")
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@unique([tourId, dayNumber])
-  @@map("tour_days")
+  companies    Company[]
+  profitRules  ProfitRule[]
+  tripLines    TripServiceLine[]
+  offerLines   OfferServiceLine[]
+  requestItems CustomTripRequestItem[]
+
+  @@map("services")
 }
 
-model TourImage {
+/// A supplier: hotel, transport company (land/sea/air) or restaurant. country_id is mandatory (BR-16).
+model Company {
+  id            String         @id @default(uuid()) @db.Uuid
+  serviceId     String         @map("service_id") @db.Uuid
+  countryId     String         @map("country_id") @db.Uuid
+  cityId        String?        @map("city_id") @db.Uuid
+  name          String         @db.VarChar(150)
+  /// Required for TRANSPORT companies, NULL otherwise (SUP-03)
+  transportMode TransportMode? @map("transport_mode")
+  contactName   String?        @map("contact_name") @db.VarChar(120)
+  phone         String?        @db.VarChar(40)
+  email         String?        @db.VarChar(190)
+  address       String?        @db.VarChar(255)
+  description   String?        @db.VarChar(1000)
+  /// Hotel stars, when relevant
+  rating        Int?           @db.SmallInt
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  service      Service                 @relation(fields: [serviceId], references: [id])
+  country      Country                 @relation(fields: [countryId], references: [id])
+  city         City?                   @relation(fields: [cityId], references: [id])
+  items        CompanyItem[]
+  integration  IntegrationConnection?
+  profitRules  ProfitRule[]
+  requestItems CustomTripRequestItem[]
+
+  @@unique([serviceId, name])
+  @@index([serviceId, transportMode, isActive])
+  @@map("companies")
+}
+
+/// What a company actually sells, with its cost per person: a room type, a route, a meal package (SUP-05).
+model CompanyItem {
+  id            String     @id @default(uuid()) @db.Uuid
+  companyId     String     @map("company_id") @db.Uuid
+  name          String     @db.VarChar(160)
+  description   String?    @db.VarChar(500)
+  /// Transport routes only
+  fromCityId    String?    @map("from_city_id") @db.Uuid
+  toCityId      String?    @map("to_city_id") @db.Uuid
+  costPerPerson Decimal    @map("cost_per_person") @db.Decimal(14, 2)
+  currencyCode  String     @map("currency_code") @db.Char(3)
+  source        ItemSource @default(MANUAL)
+  /// The item's id inside the supplier's system (integration items)
+  externalRef   String?    @map("external_ref") @db.VarChar(120)
+  lastSyncedAt  DateTime?  @map("last_synced_at") @db.Timestamptz(3)
+  /// Set when the last sync could not refresh the cost (INT-06)
+  isStale       Boolean    @default(false) @map("is_stale")
+  /// Availability reported by the supplier (null = unknown)
+  available     Boolean?
+  isActive      Boolean    @default(true) @map("is_active")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  company    Company            @relation(fields: [companyId], references: [id])
+  fromCity   City?              @relation("ItemFrom", fields: [fromCityId], references: [id])
+  toCity     City?              @relation("ItemTo", fields: [toCityId], references: [id])
+  currency   Currency           @relation(fields: [currencyCode], references: [code])
+  tripLines  TripServiceLine[]
+  offerLines OfferServiceLine[]
+
+  @@unique([companyId, externalRef])
+  @@index([companyId, isActive])
+  @@map("company_items")
+}
+
+/// Default profit per service (and optionally per company); applied automatically, overridable (PRC-02).
+model ProfitRule {
+  id        String     @id @default(uuid()) @db.Uuid
+  serviceId String     @map("service_id") @db.Uuid
+  companyId String?    @map("company_id") @db.Uuid
+  mode      ProfitMode
+  value     Decimal    @db.Decimal(14, 2)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  service Service  @relation(fields: [serviceId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, companyId])
+  @@map("profit_rules")
+}
+
+/// Connection to a supplier platform. Credentials are AES-256-GCM encrypted and never returned (INT-03).
+model IntegrationConnection {
+  id                   String            @id @default(uuid()) @db.Uuid
+  companyId            String            @unique @map("company_id") @db.Uuid
+  /// Adapter implementation key, e.g. "hotel-rest-v1"
+  adapterKey           String            @map("adapter_key") @db.VarChar(60)
+  baseUrl              String            @map("base_url") @db.VarChar(300)
+  credentialsEncrypted String?           @map("credentials_encrypted")
+  status               IntegrationStatus @default(NOT_CONFIGURED)
+  syncIntervalHours    Int               @default(6) @map("sync_interval_hours") @db.SmallInt
+  lastSyncAt           DateTime?         @map("last_sync_at") @db.Timestamptz(3)
+  lastSuccessAt        DateTime?         @map("last_success_at") @db.Timestamptz(3)
+  lastError            String?           @map("last_error") @db.VarChar(500)
+  consecutiveFailures  Int               @default(0) @map("consecutive_failures") @db.SmallInt
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  company Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  logs    IntegrationSyncLog[]
+
+  @@map("integration_connections")
+}
+
+model IntegrationSyncLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  connectionId String      @map("connection_id") @db.Uuid
+  trigger      SyncTrigger
+  result       SyncResult
+  itemsUpdated Int         @default(0) @map("items_updated")
+  itemsCreated Int         @default(0) @map("items_created")
+  costChanges  Int         @default(0) @map("cost_changes")
+  error        String?     @db.VarChar(1000)
+  startedAt    DateTime    @map("started_at") @db.Timestamptz(3)
+  finishedAt   DateTime    @map("finished_at") @db.Timestamptz(3)
+
+  connection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, startedAt])
+  @@map("integration_sync_logs")
+}
+
+// ------------------------------------------------------------------ trips
+
+/// The unit that is sold and booked (TRP-01). branch_id NULL = available to every branch.
+model Trip {
+  id                   String         @id @default(uuid()) @db.Uuid
+  code                 String         @unique @db.VarChar(24)
+  title                String         @db.VarChar(160)
+  description          String?
+  categoryId           String         @map("category_id") @db.Uuid
+  branchId             String?        @map("branch_id") @db.Uuid
+  originCityId         String         @map("origin_city_id") @db.Uuid
+  destinationCityId    String         @map("destination_city_id") @db.Uuid
+  /// Derived from the countries of origin and destination (TRP-02)
+  scope                TravelScope
+  startsAt             DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt               DateTime       @map("ends_at") @db.Timestamptz(3)
+  registrationDeadline DateTime       @map("registration_deadline") @db.Timestamptz(3)
+  minPassengers        Int            @map("min_passengers") @db.SmallInt
+  maxPassengers        Int            @map("max_passengers") @db.SmallInt
+  /// Seats taken by CONFIRMED bookings (direct + via programs); changed atomically (BR-12)
+  confirmedSeats       Int            @default(0) @map("confirmed_seats") @db.SmallInt
+  currencyCode         String         @map("currency_code") @db.Char(3)
+  /// Σ line costs (cached; recomputed whenever lines change)
+  costPerPerson        Decimal        @default(0) @map("cost_per_person") @db.Decimal(14, 2)
+  /// Σ line selling prices (cached)
+  pricePerPerson       Decimal        @default(0) @map("price_per_person") @db.Decimal(14, 2)
+  status               ProductStatus  @default(DRAFT)
+  isPublic             Boolean        @default(false) @map("is_public")
+  /// Set when a supplier cost changed after the lines were priced (INT-07)
+  costChangedAt        DateTime?      @map("cost_changed_at") @db.Timestamptz(3)
+  closedAt             DateTime?      @map("closed_at") @db.Timestamptz(3)
+  closureReason        ClosureReason? @map("closure_reason")
+  finalPassengerCount  Int?           @map("final_passenger_count") @db.SmallInt
+  cancelReason         String?        @map("cancel_reason") @db.VarChar(255)
+  coverImageUrl        String?        @map("cover_image_url") @db.VarChar(500)
+  terms                String?
+  createdById          String?        @map("created_by_id") @db.Uuid
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  category        TripCategory           @relation(fields: [categoryId], references: [id])
+  branch          Branch?                @relation(fields: [branchId], references: [id])
+  originCity      City                   @relation("TripOrigin", fields: [originCityId], references: [id])
+  destinationCity City                   @relation("TripDestination", fields: [destinationCityId], references: [id])
+  currency        Currency               @relation(fields: [currencyCode], references: [code])
+  createdBy       User?                  @relation("TripCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  lines           TripServiceLine[]
+  pickupPoints    TripPickupPoint[]
+  guides          TripGuide[]
+  images          TripImage[]
+  programLegs     ProgramTrip[]
+  offerTargets    OfferTarget[]
+  bookings        Booking[]
+  decisions       RegistrationDecision[]
+  slides          LandingSlide[]
+
+  @@index([status, startsAt])
+  @@index([branchId, startsAt])
+  @@index([isPublic, status, startsAt])
+  @@map("trips")
+}
+
+/// One priced service of a trip, ordered in time (TRP-04, TRP-05). Prices are snapshots (PRC-01).
+model TripServiceLine {
+  id            String         @id @default(uuid()) @db.Uuid
+  tripId        String         @map("trip_id") @db.Uuid
+  companyItemId String         @map("company_item_id") @db.Uuid
+  /// Denormalised from the item's company for validation (BR-04) and reporting
+  serviceId     String         @map("service_id") @db.Uuid
+  transportMode TransportMode? @map("transport_mode")
+  sequenceNo    Int            @map("sequence_no") @db.SmallInt
+  startsAt      DateTime       @map("starts_at") @db.Timestamptz(3)
+  endsAt        DateTime       @map("ends_at") @db.Timestamptz(3)
+  fromCityId    String?        @map("from_city_id") @db.Uuid
+  /// Transport: arrival city. Hotel / restaurant: the city where the service happens.
+  toCityId      String?        @map("to_city_id") @db.Uuid
+  /// Supplier cost of ONE unit (night, day, ticket) per person when priced
+  unitCost      Decimal        @map("unit_cost") @db.Decimal(14, 2)
+  /// Units per person: nights for hotels, days for restaurants, 1 for transport
+  quantity      Int            @default(1) @db.SmallInt
+  /// unitCost × quantity (PRC-01 snapshot)
+  costSnapshot  Decimal        @map("cost_snapshot") @db.Decimal(14, 2)
+  profitMode    ProfitMode     @map("profit_mode")
+  profitValue   Decimal        @map("profit_value") @db.Decimal(14, 2)
+  sellingPrice  Decimal        @map("selling_price") @db.Decimal(14, 2)
+  notes         String?        @db.VarChar(500)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  trip     Trip        @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  item     CompanyItem @relation(fields: [companyItemId], references: [id])
+  service  Service     @relation(fields: [serviceId], references: [id])
+  fromCity City?       @relation("LineFrom", fields: [fromCityId], references: [id])
+  toCity   City?       @relation("LineTo", fields: [toCityId], references: [id])
+
+  @@unique([tripId, sequenceNo])
+  @@index([companyItemId])
+  @@map("trip_service_lines")
+}
+
+/// Extra boarding cities; same base price + optional surcharge (TRP-09, BR-15).
+model TripPickupPoint {
+  id         String  @id @default(uuid()) @db.Uuid
+  tripId     String  @map("trip_id") @db.Uuid
+  cityId     String  @map("city_id") @db.Uuid
+  /// Local time "HH:mm"
+  pickupTime String? @map("pickup_time") @db.VarChar(5)
+  surcharge  Decimal @default(0) @db.Decimal(14, 2)
+  notes      String? @db.VarChar(255)
+
+  trip     Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  city     City      @relation(fields: [cityId], references: [id])
+  bookings Booking[]
+
+  @@unique([tripId, cityId])
+  @@map("trip_pickup_points")
+}
+
+model TripGuide {
+  tripId String @map("trip_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, userId])
+  @@index([userId])
+  @@map("trip_guides")
+}
+
+model TripImage {
   id        String  @id @default(uuid()) @db.Uuid
-  tourId    String  @map("tour_id") @db.Uuid
+  tripId    String  @map("trip_id") @db.Uuid
   url       String  @db.VarChar(500)
   caption   String? @db.VarChar(160)
   sortOrder Int     @default(0) @map("sort_order") @db.SmallInt
 
-  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
-  @@index([tourId, sortOrder])
-  @@map("tour_images")
+  @@index([tripId, sortOrder])
+  @@map("trip_images")
 }
 
-// ------------------------------------------------------------------ trips (scheduled executions)
+// ------------------------------------------------------------------ programs
 
-model Trip {
-  id                        String     @id @default(uuid()) @db.Uuid
-  officeId                  String     @map("office_id") @db.Uuid
-  /// Each trip belongs to exactly one branch
-  branchId                  String     @map("branch_id") @db.Uuid
-  tourId                    String     @map("tour_id") @db.Uuid
-  code                      String     @db.VarChar(24)
-  tripType                  TripType   @map("trip_type")
-  departureDate             DateTime   @map("departure_date") @db.Date
-  returnDate                DateTime   @map("return_date") @db.Date
-  currencyCode              String     @map("currency_code") @db.Char(3)
-  minPassengers             Int        @map("min_passengers") @db.SmallInt
-  maxSeats                  Int        @map("max_seats") @db.SmallInt
-  /// Seats taken by CONFIRMED bookings only; changed atomically (see BookingsService)
-  confirmedSeats            Int        @default(0) @map("confirmed_seats") @db.SmallInt
-  registrationDeadline      DateTime   @map("registration_deadline") @db.Date
-  registrationExtendedUntil DateTime?  @map("registration_extended_until") @db.Date
-  status                    TripStatus @default(DRAFT)
-  /// Listed on the office public page and Safarni showcase
-  isPublic                  Boolean    @default(false) @map("is_public")
-  /// Σ TripService.costPerPerson (cached; recomputed whenever services change)
-  costPerPerson             Decimal    @default(0) @map("cost_per_person") @db.Decimal(14, 2)
-  /// Σ TripService.sellingPricePerPerson before any offer (cached)
-  sellingPricePerPerson     Decimal    @default(0) @map("selling_price_per_person") @db.Decimal(14, 2)
-  notes                     String?
-  createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// An ordered chain of ≥ 2 trips booked as one package (PGM-01). Price = Σ trip prices (BR-06).
+model Program {
+  id                   String         @id @default(uuid()) @db.Uuid
+  code                 String         @unique @db.VarChar(24)
+  title                String         @db.VarChar(160)
+  description          String?
+  categoryId           String         @map("category_id") @db.Uuid
+  branchId             String?        @map("branch_id") @db.Uuid
+  scope                TravelScope
+  registrationDeadline DateTime       @map("registration_deadline") @db.Timestamptz(3)
+  minPassengers        Int            @map("min_passengers") @db.SmallInt
+  maxPassengers        Int            @map("max_passengers") @db.SmallInt
+  /// Passengers of CONFIRMED program bookings
+  confirmedSeats       Int            @default(0) @map("confirmed_seats") @db.SmallInt
+  currencyCode         String         @map("currency_code") @db.Char(3)
+  costPerPerson        Decimal        @default(0) @map("cost_per_person") @db.Decimal(14, 2)
+  pricePerPerson       Decimal        @default(0) @map("price_per_person") @db.Decimal(14, 2)
+  status               ProductStatus  @default(DRAFT)
+  isPublic             Boolean        @default(false) @map("is_public")
+  closedAt             DateTime?      @map("closed_at") @db.Timestamptz(3)
+  closureReason        ClosureReason? @map("closure_reason")
+  finalPassengerCount  Int?           @map("final_passenger_count") @db.SmallInt
+  cancelReason         String?        @map("cancel_reason") @db.VarChar(255)
+  coverImageUrl        String?        @map("cover_image_url") @db.VarChar(500)
+  terms                String?
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office         Office                     @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  branch         Branch                     @relation(fields: [officeId, branchId], references: [officeId, id])
-  tour           Tour                       @relation(fields: [officeId, tourId], references: [officeId, id])
-  currency       Currency                   @relation(fields: [currencyCode], references: [code])
-  services       TripService[]
-  supervisors    TripSupervisor[]
-  decisions      TripRegistrationDecision[]
-  offers         TripOffer[]
-  bookings       Booking[]
-  bookingEvents  BookingEvent[]             @relation("EventTrip")
-  supplierPaymts SupplierPayment[]
-  banners        PromoBanner[]
+  category     TripCategory           @relation(fields: [categoryId], references: [id])
+  branch       Branch?                @relation(fields: [branchId], references: [id])
+  currency     Currency               @relation(fields: [currencyCode], references: [code])
+  legs         ProgramTrip[]
+  offerTargets OfferTarget[]
+  bookings     Booking[]
+  decisions    RegistrationDecision[]
+  slides       LandingSlide[]
 
-  @@unique([officeId, code])
-  @@unique([officeId, id])
-  @@index([officeId, branchId, departureDate])
-  @@index([officeId, status, departureDate])
-  @@index([isPublic, status, departureDate])
-  @@map("trips")
+  @@index([status, registrationDeadline])
+  @@index([isPublic, status])
+  @@map("programs")
 }
 
-model TripSupervisor {
-  tripId   String @map("trip_id") @db.Uuid
-  memberId String @map("member_id") @db.Uuid
+model ProgramTrip {
+  programId  String @map("program_id") @db.Uuid
+  tripId     String @map("trip_id") @db.Uuid
+  sequenceNo Int    @map("sequence_no") @db.SmallInt
 
-  trip   Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  member OfficeMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  trip    Trip    @relation(fields: [tripId], references: [id])
 
-  @@id([tripId, memberId])
-  @@map("trip_supervisors")
-}
-
-/// Admin decision when registration closes: approve, cancel or extend.
-model TripRegistrationDecision {
-  id                  String                   @id @default(uuid()) @db.Uuid
-  tripId              String                   @map("trip_id") @db.Uuid
-  decision            RegistrationDecisionType
-  confirmedAtDecision Int                      @map("confirmed_at_decision") @db.SmallInt
-  minPassengers       Int                      @map("min_passengers") @db.SmallInt
-  previousDeadline    DateTime                 @map("previous_deadline") @db.Date
-  newDeadline         DateTime?                @map("new_deadline") @db.Date
-  note                String?                  @db.VarChar(500)
-  decidedById         String                   @map("decided_by_id") @db.Uuid
-  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  trip      Trip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  decidedBy OfficeMember @relation(fields: [decidedById], references: [id])
-
-  @@index([tripId, createdAt])
-  @@map("trip_registration_decisions")
-}
-
-// ------------------------------------------------------------------ suppliers & pricing
-
-model Supplier {
-  id          String       @id @default(uuid()) @db.Uuid
-  officeId    String       @map("office_id") @db.Uuid
-  type        SupplierType
-  name        String       @db.VarChar(150)
-  contactName String?      @map("contact_name") @db.VarChar(120)
-  phone       String?      @db.VarChar(40)
-  address     String?      @db.VarChar(255)
-  city        String?      @db.VarChar(100)
-  notes       String?
-  isActive    Boolean      @default(true) @map("is_active")
-  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  office      Office               @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  services    TripService[]
-  payments    SupplierPayment[]
-  integration SupplierIntegration?
-
-  @@unique([officeId, id])
-  @@index([officeId, type])
-  @@map("suppliers")
-}
-
-/// One service per type per trip. Selling = cost × (1 + profit%).
-model TripService {
-  id                    String       @id @default(uuid()) @db.Uuid
-  officeId              String       @map("office_id") @db.Uuid
-  tripId                String       @map("trip_id") @db.Uuid
-  supplierId            String       @map("supplier_id") @db.Uuid
-  serviceType           SupplierType @map("service_type")
-  description           String?      @db.VarChar(255)
-  costPerPerson         Decimal      @map("cost_per_person") @db.Decimal(14, 2)
-  /// e.g. 15.00 means 15 %
-  profitPercent         Decimal      @map("profit_percent") @db.Decimal(6, 2)
-  sellingPricePerPerson Decimal      @map("selling_price_per_person") @db.Decimal(14, 2)
-  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
-
-  trip                 Trip                  @relation(fields: [officeId, tripId], references: [officeId, id], onDelete: Cascade)
-  supplier             Supplier              @relation(fields: [officeId, supplierId], references: [officeId, id])
-  externalReservations ExternalReservation[]
-
-  @@unique([tripId, serviceType])
-  @@index([supplierId])
-  @@map("trip_services")
-}
-
-/// Money the office paid a supplier (e.g. the coach company's net share).
-model SupplierPayment {
-  id           String        @id @default(uuid()) @db.Uuid
-  officeId     String        @map("office_id") @db.Uuid
-  supplierId   String        @map("supplier_id") @db.Uuid
-  tripId       String?       @map("trip_id") @db.Uuid
-  amount       Decimal       @db.Decimal(14, 2)
-  currencyCode String        @map("currency_code") @db.Char(3)
-  method       PaymentMethod @default(CASH)
-  reference    String?       @db.VarChar(80)
-  paidAt       DateTime      @map("paid_at") @db.Timestamptz(3)
-  notes        String?
-  recordedById String        @map("recorded_by_id") @db.Uuid
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  office     Office       @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  supplier   Supplier     @relation(fields: [officeId, supplierId], references: [officeId, id])
-  trip       Trip?        @relation(fields: [tripId], references: [id], onDelete: SetNull)
-  currency   Currency     @relation(fields: [currencyCode], references: [code])
-  recordedBy OfficeMember @relation(fields: [recordedById], references: [id])
-
-  @@index([officeId, supplierId])
+  @@id([programId, tripId])
+  @@unique([programId, sequenceNo])
   @@index([tripId])
-  @@map("supplier_payments")
+  @@map("program_trips")
 }
 
-model TripOffer {
-  id            String       @id @default(uuid()) @db.Uuid
-  officeId      String       @map("office_id") @db.Uuid
-  tripId        String       @map("trip_id") @db.Uuid
-  title         String       @db.VarChar(120)
-  description   String?      @db.VarChar(500)
-  discountType  DiscountType @map("discount_type")
-  /// percent (0-100) or amount in the trip currency
-  discountValue Decimal      @map("discount_value") @db.Decimal(14, 2)
-  startsAt      DateTime     @map("starts_at") @db.Date
-  endsAt        DateTime     @map("ends_at") @db.Date
-  isActive      Boolean      @default(true) @map("is_active")
-  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// Registration decision after closing (CLS-05) or an admin reopen; exactly one of trip/program.
+model RegistrationDecision {
+  id               String       @id @default(uuid()) @db.Uuid
+  tripId           String?      @map("trip_id") @db.Uuid
+  programId        String?      @map("program_id") @db.Uuid
+  decision         DecisionType
+  passengersAtTime Int          @map("passengers_at_time") @db.SmallInt
+  previousDeadline DateTime     @map("previous_deadline") @db.Timestamptz(3)
+  newDeadline      DateTime?    @map("new_deadline") @db.Timestamptz(3)
+  note             String?      @db.VarChar(500)
+  decidedById      String       @map("decided_by_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  office   Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  trip     Trip      @relation(fields: [officeId, tripId], references: [officeId, id], onDelete: Cascade)
-  bookings Booking[]
+  trip      Trip?    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  program   Program? @relation(fields: [programId], references: [id], onDelete: Cascade)
+  decidedBy User     @relation(fields: [decidedById], references: [id])
 
-  @@index([tripId, isActive, startsAt, endsAt])
-  @@map("trip_offers")
+  @@index([tripId])
+  @@index([programId])
+  @@map("registration_decisions")
 }
 
-// ------------------------------------------------------------------ customers & bookings
+// ------------------------------------------------------------------ offers
+
+/// BUNDLE = discounted package of ≥ 2 services, booked as a unit; DISCOUNT = reduction on trips/programs (OFR-01).
+model Offer {
+  id             String     @id @default(uuid()) @db.Uuid
+  title          String     @db.VarChar(160)
+  description    String?
+  kind           OfferKind
+  discountMode   ProfitMode @map("discount_mode")
+  discountValue  Decimal    @map("discount_value") @db.Decimal(14, 2)
+  validFrom      DateTime   @map("valid_from") @db.Date
+  validTo        DateTime   @map("valid_to") @db.Date
+  /// BUNDLE capacity (null = unlimited)
+  maxSeats       Int?       @map("max_seats") @db.SmallInt
+  confirmedSeats Int        @default(0) @map("confirmed_seats") @db.SmallInt
+  /// BUNDLE only
+  currencyCode   String?    @map("currency_code") @db.Char(3)
+  costPerPerson  Decimal    @default(0) @map("cost_per_person") @db.Decimal(14, 2)
+  /// BUNDLE: Σ line selling prices − discount
+  pricePerPerson Decimal    @default(0) @map("price_per_person") @db.Decimal(14, 2)
+  isPublic       Boolean    @default(true) @map("is_public")
+  isActive       Boolean    @default(true) @map("is_active")
+  coverImageUrl  String?    @map("cover_image_url") @db.VarChar(500)
+  terms          String?
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  currency Currency?          @relation(fields: [currencyCode], references: [code])
+  lines    OfferServiceLine[]
+  targets  OfferTarget[]
+  bookings Booking[]          @relation("OfferBookings")
+  applied  Booking[]          @relation("AppliedDiscount")
+  slides   LandingSlide[]
+
+  @@index([isActive, validFrom, validTo])
+  @@map("offers")
+}
+
+model OfferServiceLine {
+  id            String     @id @default(uuid()) @db.Uuid
+  offerId       String     @map("offer_id") @db.Uuid
+  companyItemId String     @map("company_item_id") @db.Uuid
+  serviceId     String     @map("service_id") @db.Uuid
+  sequenceNo    Int        @default(0) @map("sequence_no") @db.SmallInt
+  unitCost      Decimal    @map("unit_cost") @db.Decimal(14, 2)
+  quantity      Int        @default(1) @db.SmallInt
+  costSnapshot  Decimal    @map("cost_snapshot") @db.Decimal(14, 2)
+  profitMode    ProfitMode @map("profit_mode")
+  profitValue   Decimal    @map("profit_value") @db.Decimal(14, 2)
+  sellingPrice  Decimal    @map("selling_price") @db.Decimal(14, 2)
+
+  offer   Offer       @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  item    CompanyItem @relation(fields: [companyItemId], references: [id])
+  service Service     @relation(fields: [serviceId], references: [id])
+
+  @@index([offerId])
+  @@map("offer_service_lines")
+}
+
+/// DISCOUNT offer targets: exactly one of trip/program (CHECK in migration).
+model OfferTarget {
+  id        String  @id @default(uuid()) @db.Uuid
+  offerId   String  @map("offer_id") @db.Uuid
+  tripId    String? @map("trip_id") @db.Uuid
+  programId String? @map("program_id") @db.Uuid
+
+  offer   Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  trip    Trip?    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  program Program? @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, tripId])
+  @@unique([offerId, programId])
+  @@index([tripId])
+  @@index([programId])
+  @@map("offer_targets")
+}
+
+// ------------------------------------------------------------------ customers
 
 model Customer {
-  id             String    @id @default(uuid()) @db.Uuid
-  officeId       String    @map("office_id") @db.Uuid
-  fullName       String    @map("full_name") @db.VarChar(160)
-  phone          String    @db.VarChar(40)
-  nationalId     String?   @map("national_id") @db.VarChar(40)
-  passportNumber String?   @map("passport_number") @db.VarChar(40)
-  dateOfBirth    DateTime? @map("date_of_birth") @db.Date
-  address        String?   @db.VarChar(255)
-  notes          String?
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                   String    @id @default(uuid()) @db.Uuid
+  fullName             String    @map("full_name") @db.VarChar(160)
+  phone                String    @db.VarChar(40)
+  nationalityCountryId String    @map("nationality_country_id") @db.Uuid
+  birthDate            DateTime? @map("birth_date") @db.Date
+  gender               Gender?
+  notes                String?   @db.VarChar(1000)
+  /// Branch of registration (CUS-08)
+  branchId             String    @map("branch_id") @db.Uuid
+  isActive             Boolean   @default(true) @map("is_active")
+  createdById          String?   @map("created_by_id") @db.Uuid
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office   Office    @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  bookings Booking[]
+  nationality  Country            @relation(fields: [nationalityCountryId], references: [id])
+  branch       Branch             @relation(fields: [branchId], references: [id])
+  createdBy    User?              @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  documents    CustomerDocument[]
+  bookingsPaid Booking[]
+  travels      BookingPassenger[]
 
-  @@unique([officeId, phone])
-  @@unique([officeId, id])
-  @@index([officeId, fullName])
+  @@index([phone])
+  @@index([fullName])
+  @@index([branchId])
   @@map("customers")
 }
 
+model CustomerDocument {
+  id               String       @id @default(uuid()) @db.Uuid
+  customerId       String       @map("customer_id") @db.Uuid
+  docType          DocumentType @map("doc_type")
+  docNumber        String       @map("doc_number") @db.VarChar(60)
+  issuingCountryId String       @map("issuing_country_id") @db.Uuid
+  issuedOn         DateTime?    @map("issued_on") @db.Date
+  expiresOn        DateTime?    @map("expires_on") @db.Date
+  /// Stored outside the public folder, served through a signed short-lived link (CUS-05)
+  filePath         String?      @map("file_path") @db.VarChar(300)
+  fileMime         String?      @map("file_mime") @db.VarChar(60)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  customer       Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  issuingCountry Country            @relation(fields: [issuingCountryId], references: [id])
+  passengers     BookingPassenger[]
+
+  /// The same document cannot belong to two customers
+  @@unique([docType, docNumber, issuingCountryId])
+  @@index([customerId])
+  @@map("customer_documents")
+}
+
+// ------------------------------------------------------------------ bookings
+
+/// Registration of passengers on exactly ONE of trip / program / offer (CHECK in migration, BKG-02).
 model Booking {
   id                 String        @id @default(uuid()) @db.Uuid
-  officeId           String        @map("office_id") @db.Uuid
-  /// Always the trip's branch
+  bookingNo          String        @unique @map("booking_no") @db.VarChar(20)
+  tripId             String?       @map("trip_id") @db.Uuid
+  programId          String?       @map("program_id") @db.Uuid
+  offerId            String?       @map("offer_id") @db.Uuid
+  payerCustomerId    String        @map("payer_customer_id") @db.Uuid
+  pickupPointId      String?       @map("pickup_point_id") @db.Uuid
   branchId           String        @map("branch_id") @db.Uuid
-  tripId             String        @map("trip_id") @db.Uuid
-  customerId         String        @map("customer_id") @db.Uuid
-  reference          String        @db.VarChar(20)
+  createdById        String        @map("created_by_id") @db.Uuid
   status             BookingStatus @default(PENDING)
   passengerCount     Int           @map("passenger_count") @db.SmallInt
-  /// Inherited from the trip; every payment must use it
   currencyCode       String        @map("currency_code") @db.Char(3)
-  // ---- price snapshot (never changes when the trip price changes) ----
-  unitPrice          Decimal       @map("unit_price") @db.Decimal(14, 2)
-  unitCost           Decimal       @map("unit_cost") @db.Decimal(14, 2)
-  subtotal           Decimal       @db.Decimal(14, 2)
-  offerId            String?       @map("offer_id") @db.Uuid
-  offerTitle         String?       @map("offer_title") @db.VarChar(120)
-  discountType       DiscountType? @map("discount_type")
-  discountValue      Decimal?      @map("discount_value") @db.Decimal(14, 2)
+  // ---- price snapshot (never changes afterwards, PRC-09) ----
+  pricePerPerson     Decimal       @map("price_per_person") @db.Decimal(14, 2)
+  costPerPerson      Decimal       @map("cost_per_person") @db.Decimal(14, 2)
+  surchargePerPerson Decimal       @default(0) @map("surcharge_per_person") @db.Decimal(14, 2)
+  discountOfferId    String?       @map("discount_offer_id") @db.Uuid
+  discountTitle      String?       @map("discount_title") @db.VarChar(160)
   discountAmount     Decimal       @default(0) @map("discount_amount") @db.Decimal(14, 2)
   totalAmount        Decimal       @map("total_amount") @db.Decimal(14, 2)
-  // ---- money received (maintained in the same transaction as payments/refunds) ----
+  // ---- money received (same transaction as payments) ----
   paidAmount         Decimal       @default(0) @map("paid_amount") @db.Decimal(14, 2)
   refundedAmount     Decimal       @default(0) @map("refunded_amount") @db.Decimal(14, 2)
-  notes              String?
+  notes              String?       @db.VarChar(1000)
   confirmedAt        DateTime?     @map("confirmed_at") @db.Timestamptz(3)
   cancelledAt        DateTime?     @map("cancelled_at") @db.Timestamptz(3)
-  cancellationReason String?       @map("cancellation_reason") @db.VarChar(255)
-  createdById        String        @map("created_by_id") @db.Uuid
+  cancelReason       String?       @map("cancel_reason") @db.VarChar(255)
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office               Office                @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  branch               Branch                @relation(fields: [officeId, branchId], references: [officeId, id])
-  trip                 Trip                  @relation(fields: [officeId, tripId], references: [officeId, id])
-  customer             Customer              @relation(fields: [officeId, customerId], references: [officeId, id])
-  currency             Currency              @relation(fields: [currencyCode], references: [code])
-  offer                TripOffer?            @relation(fields: [offerId], references: [id], onDelete: SetNull)
-  createdBy            OfficeMember          @relation("BookingCreatedBy", fields: [createdById], references: [id])
-  passengers           BookingPassenger[]
-  externalReservations ExternalReservation[]
-  payments             Payment[]
-  refunds              Refund[]
-  events               BookingEvent[]
+  trip          Trip?              @relation(fields: [tripId], references: [id])
+  program       Program?           @relation(fields: [programId], references: [id])
+  offer         Offer?             @relation("OfferBookings", fields: [offerId], references: [id])
+  payer         Customer           @relation(fields: [payerCustomerId], references: [id])
+  pickupPoint   TripPickupPoint?   @relation(fields: [pickupPointId], references: [id], onDelete: SetNull)
+  branch        Branch             @relation(fields: [branchId], references: [id])
+  createdBy     User               @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  currency      Currency           @relation(fields: [currencyCode], references: [code])
+  discountOffer Offer?             @relation("AppliedDiscount", fields: [discountOfferId], references: [id], onDelete: SetNull)
+  passengers    BookingPassenger[]
+  payments      Payment[]
+  events        BookingEvent[]
+  convertedFrom CustomTripRequest?
 
-  @@unique([officeId, reference])
-  @@unique([officeId, id])
-  @@index([officeId, branchId, status, createdAt])
   @@index([tripId, status])
-  @@index([customerId])
+  @@index([programId, status])
+  @@index([offerId, status])
+  @@index([branchId, status, createdAt])
+  @@index([payerCustomerId])
   @@map("bookings")
 }
 
-/// Every traveller has an individual record (the customer is the contact, not necessarily a passenger).
+/// The junction ("جدول كسر") between customers and bookings: each passenger is a customer (BKG-03).
 model BookingPassenger {
-  id             String       @id @default(uuid()) @db.Uuid
-  bookingId      String       @map("booking_id") @db.Uuid
-  fullName       String       @map("full_name") @db.VarChar(160)
-  dateOfBirth    DateTime?    @map("date_of_birth") @db.Date
-  nationality    String?      @db.VarChar(80)
-  documentType   DocumentType @default(NATIONAL_ID) @map("document_type")
-  documentNumber String?      @map("document_number") @db.VarChar(40)
-  notes          String?      @db.VarChar(500)
-  /// Trip-day attendance (set by the trip supervisor); null = not checked yet
-  attended       Boolean?
-  sortOrder      Int          @default(0) @map("sort_order") @db.SmallInt
+  id         String      @id @default(uuid()) @db.Uuid
+  bookingId  String      @map("booking_id") @db.Uuid
+  customerId String      @map("customer_id") @db.Uuid
+  documentId String?     @map("document_id") @db.Uuid
+  seatLabel  String?     @map("seat_label") @db.VarChar(10)
+  attendance Attendance?
+  guideNote  String?     @map("guide_note") @db.VarChar(500)
+  sortOrder  Int         @default(0) @map("sort_order") @db.SmallInt
 
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking  Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer Customer          @relation(fields: [customerId], references: [id])
+  document CustomerDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  visas    VisaApplication[]
 
-  @@index([bookingId])
+  @@unique([bookingId, customerId])
+  @@index([customerId])
   @@map("booking_passengers")
 }
 
-/// Immutable history of a booking (status changes, transfers with the old price snapshot, edits).
+/// Immutable history of a booking.
 model BookingEvent {
-  id         String           @id @default(uuid()) @db.Uuid
-  bookingId  String           @map("booking_id") @db.Uuid
-  type       BookingEventType
-  fromTripId String?          @map("from_trip_id") @db.Uuid
-  toTripId   String?          @map("to_trip_id") @db.Uuid
-  data       Json?
-  actorId    String?          @map("actor_id") @db.Uuid
-  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  id        String           @id @default(uuid()) @db.Uuid
+  bookingId String           @map("booking_id") @db.Uuid
+  type      BookingEventType
+  data      Json?
+  actorId   String?          @map("actor_id") @db.Uuid
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  booking Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  toTrip  Trip?         @relation("EventTrip", fields: [toTripId], references: [id], onDelete: SetNull)
-  actor   OfficeMember? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([bookingId, createdAt])
   @@map("booking_events")
 }
 
-// ------------------------------------------------------------------ payments & refunds
+/// Visa per passenger and destination country (VIS-01).
+model VisaApplication {
+  id          String     @id @default(uuid()) @db.Uuid
+  passengerId String     @map("passenger_id") @db.Uuid
+  countryId   String     @map("country_id") @db.Uuid
+  status      VisaStatus @default(NOT_STARTED)
+  visaNumber  String?    @map("visa_number") @db.VarChar(60)
+  submittedAt DateTime?  @map("submitted_at") @db.Timestamptz(3)
+  decidedAt   DateTime?  @map("decided_at") @db.Timestamptz(3)
+  expiresOn   DateTime?  @map("expires_on") @db.Date
+  fee         Decimal?   @db.Decimal(14, 2)
+  notes       String?    @db.VarChar(500)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
 
+  passenger BookingPassenger @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+  country   Country          @relation(fields: [countryId], references: [id])
+
+  @@unique([passengerId, countryId])
+  @@index([status])
+  @@map("visa_applications")
+}
+
+// ------------------------------------------------------------------ payments
+
+/// Payments and refunds. Append-only: an UPDATE/DELETE trigger rejects changes (PAY-05, BR-13).
 model Payment {
   id             String        @id @default(uuid()) @db.Uuid
-  officeId       String        @map("office_id") @db.Uuid
-  branchId       String        @map("branch_id") @db.Uuid
+  receiptNo      String        @unique @map("receipt_no") @db.VarChar(20)
   bookingId      String        @map("booking_id") @db.Uuid
+  branchId       String        @map("branch_id") @db.Uuid
+  kind           PaymentKind
+  /// REFUND rows point to the original payment
+  refundOfId     String?       @map("refund_of_id") @db.Uuid
   amount         Decimal       @db.Decimal(14, 2)
-  /// Always equal to the booking currency
   currencyCode   String        @map("currency_code") @db.Char(3)
   method         PaymentMethod @default(CASH)
-  receiptNumber  String        @map("receipt_number") @db.VarChar(30)
+  payerName      String        @map("payer_name") @db.VarChar(160)
   paidAt         DateTime      @map("paid_at") @db.Timestamptz(3)
+  /// Balance right after this movement (printed on the receipt)
+  balanceAfter   Decimal       @map("balance_after") @db.Decimal(14, 2)
+  reason         String?       @db.VarChar(255)
   notes          String?       @db.VarChar(500)
-  /// Σ refunds against this payment (never above amount)
-  refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(14, 2)
-  recordedById   String        @map("recorded_by_id") @db.Uuid
+  /// Client-generated key: a double click never records the payment twice (PAY-10)
+  idempotencyKey String?       @unique @map("idempotency_key") @db.VarChar(80)
+  receivedById   String        @map("received_by_id") @db.Uuid
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  office     Office       @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  branch     Branch       @relation(fields: [officeId, branchId], references: [officeId, id])
-  booking    Booking      @relation(fields: [officeId, bookingId], references: [officeId, id])
-  currency   Currency     @relation(fields: [currencyCode], references: [code])
-  recordedBy OfficeMember @relation(fields: [recordedById], references: [id])
-  refunds    Refund[]
+  booking    Booking   @relation(fields: [bookingId], references: [id])
+  branch     Branch    @relation(fields: [branchId], references: [id])
+  refundOf   Payment?  @relation("RefundOf", fields: [refundOfId], references: [id])
+  refunds    Payment[] @relation("RefundOf")
+  currency   Currency  @relation(fields: [currencyCode], references: [code])
+  receivedBy User      @relation(fields: [receivedById], references: [id])
 
-  @@unique([officeId, receiptNumber])
-  @@unique([officeId, id])
-  @@index([officeId, branchId, paidAt])
   @@index([bookingId])
+  @@index([branchId, paidAt])
+  @@index([refundOfId])
   @@map("payments")
 }
 
-/// Linked to the original payment; partial refunds allowed, never above the payment.
-model Refund {
-  id           String   @id @default(uuid()) @db.Uuid
-  officeId     String   @map("office_id") @db.Uuid
-  paymentId    String   @map("payment_id") @db.Uuid
-  bookingId    String   @map("booking_id") @db.Uuid
-  amount       Decimal  @db.Decimal(14, 2)
-  currencyCode String   @map("currency_code") @db.Char(3)
-  reason       String   @db.VarChar(255)
-  refundedAt   DateTime @map("refunded_at") @db.Timestamptz(3)
-  recordedById String   @map("recorded_by_id") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+/// Per-year receipt / booking number sequences (gap-free, PAY-03).
+model NumberSequence {
+  key   String @id @db.VarChar(20)
+  value Int    @default(0)
 
-  office     Office       @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  payment    Payment      @relation(fields: [officeId, paymentId], references: [officeId, id])
-  booking    Booking      @relation(fields: [officeId, bookingId], references: [officeId, id])
-  currency   Currency     @relation(fields: [currencyCode], references: [code])
-  recordedBy OfficeMember @relation(fields: [recordedById], references: [id])
-
-  @@index([officeId, refundedAt])
-  @@index([paymentId])
-  @@map("refunds")
+  @@map("number_sequences")
 }
 
-// ------------------------------------------------------------------ external supplier integrations
-// Foundation only: adapters are implemented once the hotel and transport API documentation is
-// available. Secrets are NEVER stored here — only the name of the server-side secret to use.
+// ------------------------------------------------------------------ public site
 
-model SupplierIntegration {
-  id                 String            @id @default(uuid()) @db.Uuid
-  officeId           String            @map("office_id") @db.Uuid
-  supplierId         String            @map("supplier_id") @db.Uuid
-  kind               IntegrationKind
-  status             IntegrationStatus @default(NOT_CONFIGURED)
-  /// The supplier's identifier inside the external system (e.g. hotel id, operator id)
-  externalSupplierId String?           @map("external_supplier_id") @db.VarChar(120)
-  baseUrl            String?           @map("base_url") @db.VarChar(300)
-  /// Name of the server-side secret (env var / vault key) holding the credentials. Never the secret itself.
-  credentialRef      String?           @map("credential_ref") @db.VarChar(120)
-  /// Capabilities confirmed from the provider's documentation (search, availability, reserve, cancel...)
-  capabilities       Json?
-  lastHealthCheckAt  DateTime?         @map("last_health_check_at") @db.Timestamptz(3)
-  lastHealthOk       Boolean?          @map("last_health_ok")
-  lastError          String?           @map("last_error") @db.VarChar(500)
-  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// "Design your trip" request from the landing page (CTR-01..09). Not a booking.
+model CustomTripRequest {
+  id                 String        @id @default(uuid()) @db.Uuid
+  requestNo          String        @unique @map("request_no") @db.VarChar(20)
+  contactName        String        @map("contact_name") @db.VarChar(120)
+  contactPhone       String        @map("contact_phone") @db.VarChar(40)
+  passengersCount    Int           @map("passengers_count") @db.SmallInt
+  desiredFrom        DateTime      @map("desired_from") @db.Date
+  desiredTo          DateTime      @map("desired_to") @db.Date
+  originCityId       String        @map("origin_city_id") @db.Uuid
+  destinationCityId  String        @map("destination_city_id") @db.Uuid
+  categoryId         String?       @map("category_id") @db.Uuid
+  message            String?       @db.VarChar(1000)
+  status             RequestStatus @default(NEW)
+  assignedBranchId   String?       @map("assigned_branch_id") @db.Uuid
+  handledById        String?       @map("handled_by_id") @db.Uuid
+  convertedBookingId String?       @unique @map("converted_booking_id") @db.Uuid
+  staffNotes         String?       @map("staff_notes") @db.VarChar(1000)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office       Office                @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  supplier     Supplier              @relation(fields: [officeId, supplierId], references: [officeId, id], onDelete: Cascade)
-  reservations ExternalReservation[]
-  logs         IntegrationLog[]
+  originCity       City                    @relation("RequestOrigin", fields: [originCityId], references: [id])
+  destinationCity  City                    @relation("RequestDestination", fields: [destinationCityId], references: [id])
+  category         TripCategory?           @relation(fields: [categoryId], references: [id])
+  assignedBranch   Branch?                 @relation(fields: [assignedBranchId], references: [id])
+  handledBy        User?                   @relation(fields: [handledById], references: [id], onDelete: SetNull)
+  convertedBooking Booking?                @relation(fields: [convertedBookingId], references: [id], onDelete: SetNull)
+  items            CustomTripRequestItem[]
 
-  @@unique([officeId, supplierId])
-  @@unique([officeId, id])
-  @@map("supplier_integrations")
+  @@index([status, createdAt])
+  @@index([assignedBranchId, status])
+  @@map("custom_trip_requests")
 }
 
-/// One external reservation per (booking, trip service). Separate from the internal booking.
-model ExternalReservation {
-  id                String                    @id @default(uuid()) @db.Uuid
-  officeId          String                    @map("office_id") @db.Uuid
-  bookingId         String                    @map("booking_id") @db.Uuid
-  tripServiceId     String                    @map("trip_service_id") @db.Uuid
-  integrationId     String                    @map("integration_id") @db.Uuid
-  kind              IntegrationKind
-  status            ExternalReservationStatus @default(NOT_REQUESTED)
-  /// Sent to the provider (when supported) so a repeated request can never create a second reservation
-  idempotencyKey    String                    @unique @map("idempotency_key") @db.VarChar(80)
-  externalReference String?                   @map("external_reference") @db.VarChar(120)
-  quantity          Int                       @db.SmallInt
-  attempts          Int                       @default(0) @db.SmallInt
-  lastError         String?                   @map("last_error") @db.VarChar(500)
-  /// Normalised, non-personal details returned by the provider (room type, seat numbers, price...)
-  details           Json?
-  lastSyncedAt      DateTime?                 @map("last_synced_at") @db.Timestamptz(3)
-  createdAt         DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(3)
+/// One chosen service: an existing company, or "Other" with free text (CHECK in migration).
+model CustomTripRequestItem {
+  id            String         @id @default(uuid()) @db.Uuid
+  requestId     String         @map("request_id") @db.Uuid
+  serviceId     String         @map("service_id") @db.Uuid
+  companyId     String?        @map("company_id") @db.Uuid
+  otherText     String?        @map("other_text") @db.VarChar(200)
+  transportMode TransportMode? @map("transport_mode")
 
-  office      Office              @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  booking     Booking             @relation(fields: [officeId, bookingId], references: [officeId, id], onDelete: Cascade)
-  tripService TripService         @relation(fields: [tripServiceId], references: [id])
-  integration SupplierIntegration @relation(fields: [officeId, integrationId], references: [officeId, id])
-  logs        IntegrationLog[]
+  request CustomTripRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  service Service           @relation(fields: [serviceId], references: [id])
+  company Company?          @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
-  @@unique([bookingId, tripServiceId])
-  @@index([officeId, status])
-  @@map("external_reservations")
+  @@index([requestId])
+  @@map("custom_trip_request_items")
 }
 
-/// Request/response metadata for every external call. No credentials, no passenger data, no bodies.
-model IntegrationLog {
-  id                    String               @id @default(uuid()) @db.Uuid
-  officeId              String               @map("office_id") @db.Uuid
-  integrationId         String               @map("integration_id") @db.Uuid
-  externalReservationId String?              @map("external_reservation_id") @db.Uuid
-  operation             IntegrationOperation
-  httpMethod            String               @map("http_method") @db.VarChar(8)
-  /// Path only, never query strings (they may carry keys)
-  endpoint              String               @db.VarChar(200)
-  statusCode            Int?                 @map("status_code") @db.SmallInt
-  durationMs            Int                  @map("duration_ms")
-  success               Boolean
-  errorCode             String?              @map("error_code") @db.VarChar(60)
-  errorMessage          String?              @map("error_message") @db.VarChar(500)
-  correlationId         String               @map("correlation_id") @db.VarChar(80)
-  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+model LandingSlide {
+  id        String    @id @default(uuid()) @db.Uuid
+  title     String    @db.VarChar(160)
+  subtitle  String?   @db.VarChar(255)
+  imageUrl  String    @map("image_url") @db.VarChar(500)
+  linkType  SlideLink @default(NONE) @map("link_type")
+  tripId    String?   @map("trip_id") @db.Uuid
+  programId String?   @map("program_id") @db.Uuid
+  offerId   String?   @map("offer_id") @db.Uuid
+  sortOrder Int       @default(0) @map("sort_order") @db.SmallInt
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office      Office               @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  integration SupplierIntegration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
-  reservation ExternalReservation? @relation(fields: [externalReservationId], references: [id], onDelete: SetNull)
+  trip    Trip?    @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  program Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  offer   Offer?   @relation(fields: [offerId], references: [id], onDelete: SetNull)
 
-  @@index([integrationId, createdAt])
-  @@index([officeId, createdAt])
-  @@map("integration_logs")
+  @@index([isActive, sortOrder])
+  @@map("landing_slides")
 }
 
-// ------------------------------------------------------------------ marketing & audit
+model Achievement {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String    @db.VarChar(160)
+  description String?
+  achievedOn  DateTime? @map("achieved_on") @db.Date
+  sortOrder   Int       @default(0) @map("sort_order") @db.SmallInt
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-/// Animated ads on the Safarni landing page and the office page.
-model PromoBanner {
+  images AchievementImage[]
+
+  @@map("achievements")
+}
+
+model AchievementImage {
+  id            String  @id @default(uuid()) @db.Uuid
+  achievementId String  @map("achievement_id") @db.Uuid
+  url           String  @db.VarChar(500)
+  caption       String? @db.VarChar(160)
+  sortOrder     Int     @default(0) @map("sort_order") @db.SmallInt
+
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@index([achievementId, sortOrder])
+  @@map("achievement_images")
+}
+
+model Policy {
   id        String   @id @default(uuid()) @db.Uuid
-  officeId  String   @map("office_id") @db.Uuid
-  tripId    String?  @map("trip_id") @db.Uuid
-  title     String   @db.VarChar(120)
-  subtitle  String?  @db.VarChar(200)
-  imageUrl  String?  @map("image_url") @db.VarChar(500)
+  slug      String   @unique @db.VarChar(80)
+  title     String   @db.VarChar(160)
+  body      String
   sortOrder Int      @default(0) @map("sort_order") @db.SmallInt
-  startsAt  DateTime @map("starts_at") @db.Date
-  endsAt    DateTime @map("ends_at") @db.Date
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  office Office @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  trip   Trip?  @relation(fields: [tripId], references: [id], onDelete: SetNull)
-
-  @@index([isActive, startsAt, endsAt])
-  @@map("promo_banners")
+  @@map("policies")
 }
 
+/// Office identity and behaviour. Exactly one row (id = 1).
+model SiteSetting {
+  id                     Int      @id @default(1) @db.SmallInt
+  officeName             String   @map("office_name") @db.VarChar(150)
+  officeNameEn           String?  @map("office_name_en") @db.VarChar(150)
+  tagline                String?  @db.VarChar(255)
+  about                  String?
+  logoUrl                String?  @map("logo_url") @db.VarChar(500)
+  heroImageUrl           String?  @map("hero_image_url") @db.VarChar(500)
+  whatsappNumber         String   @map("whatsapp_number") @db.VarChar(40)
+  /// Placeholders: {title} {code} {price} {link}
+  whatsappTemplate       String   @map("whatsapp_template") @db.VarChar(500)
+  phone                  String?  @db.VarChar(40)
+  email                  String?  @db.VarChar(190)
+  address                String?  @db.VarChar(255)
+  defaultCurrencyCode    String   @default("SYP") @map("default_currency_code") @db.Char(3)
+  socialLinks            Json?    @map("social_links")
+  /// VIS-03: warn when a visa is missing this many days before departure
+  visaWarningDays        Int      @default(14) @map("visa_warning_days") @db.SmallInt
+  /// CUS-04: passport must be valid this many months after the trip ends
+  passportValidityMonths Int      @default(6) @map("passport_validity_months") @db.SmallInt
+  /// CLS-07: notify this many days before a registration deadline
+  deadlineWarningDays    Int      @default(3) @map("deadline_warning_days") @db.SmallInt
+  /// TBD-07: a booking can be confirmed only after its first payment
+  confirmRequiresPayment Boolean  @default(true) @map("confirm_requires_payment")
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("site_settings")
+}
+
+// ------------------------------------------------------------------ audit
+
+/// Append-only (UPDATE/DELETE rejected by a trigger, AUD-02).
 model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
-  officeId   String?  @map("office_id") @db.Uuid
-  branchId   String?  @map("branch_id") @db.Uuid
   userId     String?  @map("user_id") @db.Uuid
+  branchId   String?  @map("branch_id") @db.Uuid
   action     String   @db.VarChar(64)
   entityType String   @map("entity_type") @db.VarChar(40)
   entityId   String?  @map("entity_id") @db.Uuid
   summary    String   @db.VarChar(255)
-  metadata   Json?
+  /// { before, after } for updates
+  changes    Json?
   ip         String?  @db.VarChar(64)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  office Office? @relation(fields: [officeId], references: [id], onDelete: Cascade)
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([officeId, createdAt])
-  @@index([officeId, entityType, entityId])
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
   @@map("audit_logs")
 }

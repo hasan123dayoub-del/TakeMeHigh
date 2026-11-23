@@ -36,3 +36,6 @@ test-results/
 
 # Prisma generated client
 apps/api/src/generated/
+
+# user uploads (public images and private identity documents)
+/uploads/
