@@ -26,7 +26,8 @@
     "db:reset": "prisma migrate reset --force && prisma db seed",
     "db:studio": "prisma studio",
     "db:status": "prisma migrate status",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "setup:install": "tsx prisma/install.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.6.0",

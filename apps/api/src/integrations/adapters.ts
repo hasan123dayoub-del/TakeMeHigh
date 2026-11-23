@@ -77,7 +77,7 @@ async function call(ctx: AdapterContext, path: string): Promise<unknown> {
 const DECIMAL = /^\d{1,12}(\.\d{1,2})?$/;
 
 /**
- * Generic REST contract v1 (docs/integrations/supplier-api-v1.md), used until each supplier's own
+ * Generic REST contract v1 (docs/integrations/README.md), used until each supplier's own
  * documentation is received (TBD-02):
  *   GET {base}/health         → 200
  *   GET {base}/items          → { items: [{ id, name, description?, from?, to?, price_per_person, currency, available?, mode? }] }

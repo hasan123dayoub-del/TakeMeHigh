@@ -2,13 +2,13 @@
   "name": "travelos",
   "version": "0.1.0",
   "private": true,
-  "description": "A modern Travel Agency Operations Management SaaS platform.",
+  "description": "TakeMeHigh: operations system for one travel agency (single-tenant).",
   "engines": {
     "node": ">=22",
     "npm": ">=10"
   },
   "scripts": {
-    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-safarni.ps1",
+    "start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-takemehigh.ps1",
     "postinstall": "npm run build -w @travelos/shared",
     "dev": "concurrently -k -n api,web -c cyan,magenta \"npm run dev -w @travelos/api\" \"npm run dev -w @travelos/web\"",
     "dev:api": "npm run dev -w @travelos/api",

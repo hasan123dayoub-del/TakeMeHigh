@@ -1,14 +1,14 @@
 <#
-  Safarni - one-command local start (Windows PowerShell 5.1+)
+  TakeMeHigh - one-command local start (Windows PowerShell 5.1+)
 
   1. Starts the local development PostgreSQL (port from DATABASE_URL) if it is not running.
-     - Uses the data folder in $env:SAFARNI_PGDATA, or C:\Hakathon\pgdata-safarni by default.
+     - Uses the data folder in $env:TAKEMEHIGH_PGDATA, or C:\Hakathon\pgdata-safarni by default.
      - If no such folder exists, it assumes your own PostgreSQL service is already running.
   2. Installs dependencies on first run.
   3. Applies database migrations (safe - never deletes data) and loads demo data if the DB is empty.
   4. Starts the API (http://localhost:3001) and the web app (http://localhost:3000).
 
-  Usage (from the project folder):   powershell -ExecutionPolicy Bypass -File scripts\start-safarni.ps1
+  Usage (from the project folder):   powershell -ExecutionPolicy Bypass -File scripts\start-takemehigh.ps1
 #>
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -18,7 +18,7 @@ function Info($msg) { Write-Host "  > $msg" -ForegroundColor Cyan }
 function Ok($msg) { Write-Host "  [ok] $msg" -ForegroundColor Green }
 function Fail($msg) { Write-Host "  [x] $msg" -ForegroundColor Red; exit 1 }
 
-Write-Host "`nSafarni - local start`n" -ForegroundColor White
+Write-Host "`nTakeMeHigh - local start`n" -ForegroundColor White
 
 # ---------------------------------------------------------------- .env
 if (-not (Test-Path "$root\.env")) {
@@ -34,11 +34,11 @@ $listening = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction Si
 if ($listening) {
   Ok "PostgreSQL is running on port $port"
 } else {
-  $pgData = if ($env:SAFARNI_PGDATA) { $env:SAFARNI_PGDATA } else { 'C:\Hakathon\pgdata-safarni' }
+  $pgData = if ($env:TAKEMEHIGH_PGDATA) { $env:TAKEMEHIGH_PGDATA } else { 'C:\Hakathon\pgdata-safarni' }
   $pgBin = Get-ChildItem 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue |
     Sort-Object { [int]($_.Name -replace '\D', '') } -Descending | Select-Object -First 1
   if (-not $pgBin -or -not (Test-Path $pgData)) {
-    Fail "Nothing is listening on port $port. Start your PostgreSQL service (or set SAFARNI_PGDATA to a data folder)."
+    Fail "Nothing is listening on port $port. Start your PostgreSQL service (or set TAKEMEHIGH_PGDATA to a data folder)."
   }
   # Keep the log outside the data folder: after an unclean shutdown, recovery syncs every file in it
   # and stalls on a log file that pg_ctl holds open (Windows "sharing violation").
@@ -77,7 +77,7 @@ foreach ($p in 3000, 3001) {
   if ($c) {
     $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId=$($c.OwningProcess)").CommandLine
     if ($cmd -match 'travelos') {
-      Fail "Safarni already seems to be running (port $p). Open http://localhost:3000 or close the other terminal first."
+      Fail "TakeMeHigh already seems to be running (port $p). Open http://localhost:3000 or close the other terminal first."
     }
     Fail "Port $p is used by another program: $cmd"
   }
@@ -101,9 +101,9 @@ if ($LASTEXITCODE -ne 0) { Fail "Seeding failed" }
 
 # ---------------------------------------------------------------- run
 Write-Host ""
-Ok "Starting Safarni:"
-Write-Host "      Showcase   http://localhost:3000"
-Write-Host "      Dashboard  http://localhost:3000/dashboard   (admin@sham-travel.safarni.local / Safarni@2026)"
+Ok "Starting TakeMeHigh:"
+Write-Host "      Public page http://localhost:3000"
+Write-Host "      Dashboard  http://localhost:3000/dashboard   (admin@takemehigh.local / TakeMeHigh@2026)"
 Write-Host "      API docs   http://localhost:3001/api/docs"
 Write-Host "      Stop with Ctrl+C`n"
 npm run dev

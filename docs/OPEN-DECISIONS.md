@@ -1,23 +1,29 @@
-# Open business decisions and the technical defaults in use
+# Open decisions
 
-The Master Project Context (§26) asks us not to invent business rules. Where a choice was needed to build working software, a **technical default** was used.
+The SRS lists 23 open items in Appendix C (TBD-01 to TBD-23). The owner asked to build with the **provisional assumptions**. This page records how each one is implemented and how to change it later.
 
-Each default is reversible. None of them is a confirmed business requirement until the office owner approves it.
-
-| # | Question | Default implemented | Where | To change |
-|---|---|---|---|---|
-| 1 | Does a confirmed booking need an initial payment? | **No.** A booking can be confirmed unpaid; the outstanding balance shows on the dashboard and in the reports. | `BookingsService.confirm` | Add a minimum-payment check before `reserveSeats` |
-| 2 | Track supplier payments and balances? | **Yes** (decided by the owner). Dues = cost per person × confirmed passengers. Payments per trip are capped at cost × maximum seats. | `SuppliersService.pay`, trip `financials` | Whether advances above current dues are allowed |
-| 3 | Cancellation and refund policy | **Manual.** Cancelling never refunds automatically; an authorised employee records refunds against the original payments. | `BookingsService.cancel / recordRefund` | Add policy percentages per tour |
-| 4 | Can confirmed bookings be edited? | Notes and passenger details: **yes**. Passenger **count: no** (cancel and rebook). Pending and waiting-list bookings may change the count and are re-totalled with their original price snapshot. | `BookingsService.update` | — |
-| 5 | Can offers overlap? | **No.** Overlapping active offers on the same trip are refused. A FIXED discount is **per person**; a PERCENTAGE applies to the booking subtotal. | `TripsService.assertOffer`, `pricing.ts` | Define how overlapping offers combine |
-| 6 | Several hotels or providers across one tour's stages? | **No.** One supplier per service type per trip (confirmed for v1). | `@@unique([tripId, serviceType])` | — |
-| 7 | Exact permissions per role | Two default roles. **Admin**: everything, office-wide. **Reception**: own branch; customers, bookings, cash payments, operational reports; no refunds, no financial reports, no staff or settings. Roles are editable per office. | `@travelos/shared` `DEFAULT_ROLES` | Edit in the Roles screen |
-| 8 | Subscription plans and billing | **Not implemented.** The platform admin can onboard, activate and deactivate offices. | `PlatformModule` | — |
-| 9 | Trip status transitions | `DRAFT → OPEN` (needs priced services) → `REGISTRATION_CLOSED` automatically at the deadline → admin **APPROVE / EXTEND / CANCEL** → `APPROVED → COMPLETED` after the return date. `OPEN → DRAFT` only without bookings. New bookings need `OPEN`; confirming existing pending bookings is allowed until the trip is completed or cancelled. | `TripsService` | — |
-| 10 | Booking count above registered passengers during a draft? | **No.** The passenger count is always the number of passenger records. | `CreateBookingDto.passengers` | — |
-| 11 | Are customers shared across branches? | **Yes**, a customer belongs to the office, so a returning customer is found at any branch. Their bookings and balances shown to a branch-scoped user only include that branch. | `CustomersService` | — |
-| 12 | Which services are required before opening registration? | **At least one** priced service. | `TripsService.open` | Require e.g. TRANSPORT |
-| 13 | When are external hotel and transport reservations made? | **Pending the API documentation.** See `docs/integrations/README.md` §9. | — | — |
-| 14 | Landing page across offices | **Showcase.** Only offices that enable their public page appear; no checkout; "Book now" opens the office's WhatsApp. Each office also has its own page. (Decided by the owner.) | `PublicPagesModule` | — |
-| 15 | PDF generation | Printable pages in the web app ("Save as PDF"), because server PDF libraries do not shape Arabic correctly. Excel is produced by the API (ExcelJS, right-to-left sheets). | web print views, `ReportsService.toExcel` | — |
+| # | Question | Implemented as | To change it |
+|---|---|---|---|
+| TBD-01 | Hosting ("online, not cloud") | One installation per client on its own server, reached through the browser. `npm run setup:install` creates the first Admin. | Deployment only |
+| TBD-02 | The suppliers' API documentation | A generic REST contract v1 plus a built-in sandbox supplier (`docs/integrations`) | Add an adapter in `integrations/adapters.ts` |
+| TBD-03 | Booking from another departure point | The same base price plus the pickup point's `surcharge`, which only the Admin sets | `trip_pickup_points.surcharge` |
+| TBD-04 | Can a trip be sold alone and also inside programs? | Yes. A trip can be a leg of several programs. | — |
+| TBD-05 | Who builds trips; who sees costs; profit on programs | The Admin does everything. A branch manager builds own-branch trips with the default profit. Only the Admin sees costs and profit. No extra profit on programs. | Roles page (`pricing.view_breakdown`, `pricing.set_profit`) |
+| TBD-06 | Currencies | One currency per trip, program and bundle, with no conversion. Statistics are kept per currency. | — |
+| TBD-07 | When can a booking be confirmed? | After the first payment, and only with complete documents | Settings → `confirmRequiresPayment` |
+| TBD-08 | Can a branch see other branches' customers? | No. Only customers registered in the branch or booked through it. | `customers.service` scope |
+| TBD-09 | Visa fee; passport validity | An optional fee on each visa record. The passport must be valid 6 months after the trip. | Settings → `passportValidityMonths` |
+| TBD-10 | Payment methods; refunds | Cash only. Refunds are done by the Admin, with a reason, and linked to the original payment. | Add a value to `PaymentMethod` |
+| TBD-11 | The guide's dashboard before the mobile app | Assigned trips, the passenger lists, attendance and notes | Roles page |
+| TBD-12 | Realized profit | Profit of bookings on finished products that are fully paid | `reports.service` |
+| TBD-13 | Stacking offers | Offers never stack; the best live discount wins | `rules.bestDiscount` |
+| TBD-14 | Trip categories | Cultural and religious, as in the brief; the Admin adds more | Categories page |
+| TBD-15 | "Other" for staff | Only the public request form accepts "Other"; staff add the company first | — |
+| TBD-16 | A company with several services | One service per company; add it twice if needed | — |
+| TBD-17 | Notification channels; CAPTCHA | In-dashboard notifications. The public form uses a honeypot and a limit of 5 per hour per visitor. | Add an email/SMS adapter |
+| TBD-18 | Receipt format | An A5 PDF printed from the browser, with yearly gap-free numbers (`RCP-2026-000123`) | — |
+| TBD-19 | Hotel occupancy and stars | The supplier's cost per person per night, multiplied by the number of nights; stars kept on the company | — |
+| TBD-20 | Airlines and airports | Air transport companies with city-to-city items; dedicated tables come later | — |
+| TBD-21 | Several managers per branch; shared trips | Allowed. Trips with no branch are shared by all branches. | — |
+| TBD-22 | Languages | Arabic (RTL) first, plus English throughout | — |
+| TBD-23 | Licensing and updates | No operational duty for the developer after delivery | Contract |
