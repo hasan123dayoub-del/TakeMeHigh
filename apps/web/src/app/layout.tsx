@@ -26,9 +26,9 @@ const readex = Readex_Pro({ subsets: ['arabic', 'latin'], variable: '--font-arab
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: { default: 'سفرني · Safarni', template: '%s · سفرني' },
-  description: 'سفرني: نظام تشغيل يومي لمكاتب السياحة — الرحلات والعروض والحجوزات والزبائن والموردين والمقاعد في لوحة واحدة.',
-  applicationName: 'Safarni',
+  title: { default: 'TakeMeHigh', template: '%s · TakeMeHigh' },
+  description: 'TakeMeHigh: نظام تشغيل مكتب السياحة — الرحلات والبرامج والعروض والحجوزات والعملاء والموردون والمقاعد في لوحة واحدة.',
+  applicationName: 'TakeMeHigh',
 };
 
 export const viewport: Viewport = {

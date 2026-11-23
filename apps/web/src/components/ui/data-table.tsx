@@ -18,6 +18,8 @@ import {
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, Inbox } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { formatNumber } from '@/lib/format';
+import { useLocale, useMessages } from '@/lib/i18n';
+import { common } from '@/lib/i18n/common';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
 import { EmptyState, type EmptyStateProps } from './empty-state';
@@ -92,7 +94,7 @@ export interface DataTableProps<TData extends RowData> {
   minWidth?: number;
 }
 
-const ALIGN = { start: 'text-left', end: 'text-right', center: 'text-center' } as const;
+const ALIGN = { start: 'text-start', end: 'text-end', center: 'text-center' } as const;
 
 export function DataTable<TData extends RowData>({
   columns,
@@ -195,7 +197,7 @@ export function DataTable<TData extends RowData>({
                     return (
                       <TableCell key={col.id} className={ALIGN[meta?.align ?? 'start']}>
                         <Skeleton
-                          className={cn('h-4', meta?.align === 'end' && 'ml-auto')}
+                          className={cn('h-4', meta?.align === 'end' && 'ms-auto')}
                           style={{
                             width:
                               meta?.skeletonWidth ?? `${55 + ((i * 17 + col.id.length * 7) % 40)}%`,
@@ -232,8 +234,8 @@ export function DataTable<TData extends RowData>({
         <EmptyState
           size="sm"
           icon={empty?.icon ?? Inbox}
-          title={empty?.title ?? 'Nothing here yet'}
-          description={empty?.description ?? 'Records you add will appear in this list.'}
+          title={empty?.title ?? '—'}
+          description={empty?.description}
           action={empty?.action}
           secondaryAction={empty?.secondaryAction}
         />
@@ -267,6 +269,8 @@ export function DataTablePagination({
   onPageSizeChange?: (pageSize: number) => void;
   pageSizeOptions?: number[];
 }) {
+  const t = useMessages(common);
+  const { intl } = useLocale();
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   const pages = Math.max(totalPages, 1);
@@ -277,16 +281,16 @@ export function DataTablePagination({
       className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-[13px] text-muted"
     >
       <p className="num" aria-live="polite">
-        Showing <span className="font-medium text-foreground">{formatNumber(from)}</span>–
-        <span className="font-medium text-foreground">{formatNumber(to)}</span> of{' '}
-        <span className="font-medium text-foreground">{formatNumber(total)}</span>
+        {t.showing} <span className="font-medium text-foreground">{formatNumber(from, { locale: intl })}</span>–
+        <span className="font-medium text-foreground">{formatNumber(to, { locale: intl })}</span> {t.of}{' '}
+        <span className="font-medium text-foreground">{formatNumber(total, { locale: intl })}</span>
       </p>
       <div className="flex items-center gap-3">
         {onPageSizeChange && (
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline">Rows</span>
+            <span className="hidden sm:inline">{t.rows}</span>
             <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v))}>
-              <SelectTrigger size="sm" className="w-[76px]" aria-label="Rows per page">
+              <SelectTrigger size="sm" className="w-[76px]" aria-label={t.rows}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -300,26 +304,26 @@ export function DataTablePagination({
           </div>
         )}
         <span className="num hidden sm:inline">
-          Page {page} of {pages}
+          {t.page} {formatNumber(page, { locale: intl })} {t.of} {formatNumber(pages, { locale: intl })}
         </span>
         <div className="flex gap-1.5">
           <Button
             variant="secondary"
             size="icon-sm"
-            aria-label="Previous page"
+            aria-label={t.previous}
             disabled={loading || page <= 1}
             onClick={() => onPageChange?.(page - 1)}
           >
-            <ChevronLeft />
+            <ChevronLeft className="rtl-flip" />
           </Button>
           <Button
             variant="secondary"
             size="icon-sm"
-            aria-label="Next page"
+            aria-label={t.next}
             disabled={loading || page >= pages}
             onClick={() => onPageChange?.(page + 1)}
           >
-            <ChevronRight />
+            <ChevronRight className="rtl-flip" />
           </Button>
         </div>
       </div>

@@ -65,7 +65,7 @@ export function Providers({ children, locale }: { children: ReactNode; locale: L
       defaultTheme="light"
       enableSystem={false}
       disableTransitionOnChange
-      storageKey="safarni.theme"
+      storageKey="takemehigh.theme"
       scriptProps={themeScriptProps}
     >
       <LocaleProvider initialLocale={locale}>

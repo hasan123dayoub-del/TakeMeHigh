@@ -2,7 +2,6 @@
 
 import { cva, type VariantProps } from 'class-variance-authority';
 import { LABELS } from '@travelos/shared';
-import type { BookingStatus, TripStatus, TripType } from '@travelos/shared';
 import type { ComponentProps } from 'react';
 import { useLocale } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -76,19 +75,32 @@ export function Badge({
 // ---------------------------------------------------------------------------
 
 const TONES = {
-  trip: { DRAFT: 'neutral', OPEN: 'primary', REGISTRATION_CLOSED: 'warning', APPROVED: 'success', COMPLETED: 'info', CANCELLED: 'danger' },
-  booking: { PENDING: 'warning', CONFIRMED: 'success', WAITING_LIST: 'info', CANCELLED: 'danger' },
-  tripType: { VIP: 'ink', STANDARD: 'neutral' },
+  product: { DRAFT: 'neutral', OPEN: 'primary', CLOSED: 'warning', CONFIRMED: 'success', COMPLETED: 'info', CANCELLED: 'danger' },
+  booking: { PENDING: 'warning', CONFIRMED: 'success', WAITLIST: 'info', CANCELLED: 'danger' },
+  paymentState: { UNPAID: 'danger', PARTIAL: 'warning', PAID: 'success' },
+  paymentKind: { PARTIAL: 'warning', FULL: 'success', REFUND: 'danger' },
+  visa: { NOT_STARTED: 'neutral', SUBMITTED: 'info', APPROVED: 'success', REJECTED: 'danger' },
+  request: { NEW: 'primary', CONTACTED: 'info', CONVERTED: 'success', REJECTED: 'neutral' },
+  integration: { NOT_CONFIGURED: 'neutral', ACTIVE: 'success', ERROR: 'danger', DISABLED: 'neutral' },
+  offerKind: { BUNDLE: 'ink', DISCOUNT: 'primary' },
+  scope: { DOMESTIC: 'neutral', INTERNATIONAL: 'info' },
 } satisfies Record<string, Record<string, BadgeTone>>;
 
-type StatusBadgeProps = Omit<BadgeProps, 'tone' | 'children'> &
-  (
-    | { kind: 'trip'; status: TripStatus }
-    | { kind: 'booking'; status: BookingStatus }
-    | { kind: 'tripType'; status: TripType }
-  );
+const LABEL_KEY = {
+  product: 'productStatus',
+  booking: 'bookingStatus',
+  paymentState: 'paymentState',
+  paymentKind: 'paymentKind',
+  visa: 'visaStatus',
+  request: 'requestStatus',
+  integration: 'integrationStatus',
+  offerKind: 'offerKind',
+  scope: 'travelScope',
+} as const;
 
-const LABEL_KEY = { trip: 'tripStatus', booking: 'bookingStatus', tripType: 'tripType' } as const;
+export type StatusKind = keyof typeof TONES;
+
+type StatusBadgeProps = Omit<BadgeProps, 'tone' | 'children'> & { kind: StatusKind; status: string };
 
 /** <StatusBadge kind="booking" status="CONFIRMED" /> — the label follows the UI language. */
 export function StatusBadge({ kind, status, dot = true, ...props }: StatusBadgeProps) {
@@ -96,7 +108,7 @@ export function StatusBadge({ kind, status, dot = true, ...props }: StatusBadgeP
   const tones: Record<string, BadgeTone> = TONES[kind];
   const labels: Record<string, { ar: string; en: string }> = LABELS[LABEL_KEY[kind]];
   return (
-    <Badge tone={tones[status] ?? 'neutral'} dot={kind !== 'tripType' && dot} {...props}>
+    <Badge tone={tones[status] ?? 'neutral'} dot={kind !== 'offerKind' && kind !== 'scope' && dot} {...props}>
       {labels[status]?.[locale] ?? status}
     </Badge>
   );

@@ -1,5 +1,5 @@
 /**
- * Typed fetch wrapper for the Safarni API.
+ * Typed fetch wrapper for the TakeMeHigh API.
  *
  * - Base URL from NEXT_PUBLIC_API_URL (default http://localhost:3001/api).
  * - Sends the access token; on 401 it refreshes ONCE (single-flight across concurrent calls) with the
@@ -14,8 +14,8 @@
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api').replace(/\/+$/, '');
 
-const ACCESS_KEY = 'safarni.access';
-const REFRESH_KEY = 'safarni.refresh';
+const ACCESS_KEY = 'takemehigh.access';
+const REFRESH_KEY = 'takemehigh.refresh';
 
 function read(key: string) {
   if (typeof window === 'undefined') return null;

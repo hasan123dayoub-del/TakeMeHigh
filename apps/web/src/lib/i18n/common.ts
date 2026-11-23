@@ -3,8 +3,8 @@ import { defineMessages } from './shared';
 /** Words used across many screens. Module-specific text lives next to each module. */
 export const common = defineMessages({
   ar: {
-    appName: 'سفرني',
-    appTagline: 'نظام تشغيل مكاتب السياحة',
+    appName: 'TakeMeHigh',
+    appTagline: 'نظام تشغيل مكتب السياحة والسفر',
     save: 'حفظ',
     saving: 'جارٍ الحفظ…',
     cancel: 'إلغاء',
@@ -35,6 +35,8 @@ export const common = defineMessages({
     date: 'التاريخ',
     total: 'الإجمالي',
     page: 'صفحة',
+    showing: 'عرض',
+    rows: 'صفوف',
     of: 'من',
     previous: 'السابق',
     next: 'التالي',
@@ -50,11 +52,11 @@ export const common = defineMessages({
     office: 'المكتب',
     sessionEnded: 'انتهت الجلسة',
     sessionEndedBody: 'سجّل الدخول مرة أخرى للمتابعة.',
-    networkError: 'تعذّر الوصول إلى خادم سفرني. تحقّق من الاتصال وحاول مجدداً.',
+    networkError: 'تعذّر الوصول إلى الخادم. تحقّق من الاتصال وحاول مجدداً.',
   },
   en: {
-    appName: 'Safarni',
-    appTagline: 'The operating system for tourism offices',
+    appName: 'TakeMeHigh',
+    appTagline: 'Travel agency operations system',
     save: 'Save',
     saving: 'Saving…',
     cancel: 'Cancel',
@@ -85,6 +87,8 @@ export const common = defineMessages({
     date: 'Date',
     total: 'Total',
     page: 'Page',
+    showing: 'Showing',
+    rows: 'Rows',
     of: 'of',
     previous: 'Previous',
     next: 'Next',
@@ -100,7 +104,7 @@ export const common = defineMessages({
     office: 'Office',
     sessionEnded: 'Your session has ended',
     sessionEndedBody: 'Please sign in again to continue.',
-    networkError: 'Cannot reach the Safarni server. Check your connection and try again.',
+    networkError: 'Cannot reach the server. Check your connection and try again.',
   },
 });
 

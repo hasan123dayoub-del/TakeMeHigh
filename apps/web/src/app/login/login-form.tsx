@@ -30,14 +30,18 @@ const m = defineMessages({
     signingIn: 'جارٍ تسجيل الدخول…',
     wrong: 'البريد الإلكتروني وكلمة المرور غير متطابقين. تحقّق منهما وحاول مجدداً.',
     tooMany: 'محاولات كثيرة. انتظر دقيقة ثم حاول مجدداً.',
+    locked: 'تم قفل الحساب مؤقتاً بعد 5 محاولات فاشلة. حاول بعد 15 دقيقة أو اطلب من المدير إعادة تعيين كلمة المرور.',
     welcome: 'أهلاً {name}',
-    signedInTo: 'تم الدخول إلى {office}',
+    signedInTo: '{role} · {branch}',
+    allBranches: 'كل الفروع',
     demo: 'حسابات تجريبية',
     demoHint: 'اختر حساباً لتعبئة بياناته ثم سجّل الدخول.',
-    admin: 'مدير المكتب',
-    receptionDamascus: 'استقبال دمشق',
-    receptionAleppo: 'استقبال حلب',
-    otherOffice: 'مكتب آخر',
+    admin: 'مدير المكتب (Admin)',
+    managerDamascus: 'مدير فرع دمشق',
+    employeeDamascus: 'موظف دمشق',
+    guideDamascus: 'دليل سياحي — دمشق',
+    managerAleppo: 'مديرة فرع حلب',
+    employeeAleppo: 'موظف حلب',
   },
   en: {
     email: 'Email',
@@ -52,24 +56,30 @@ const m = defineMessages({
     signingIn: 'Signing in…',
     wrong: "That email and password don't match. Check them and try again.",
     tooMany: 'Too many sign-in attempts. Wait a minute, then try again.',
+    locked: 'The account is locked for 15 minutes after 5 failed attempts. Try later or ask the admin to reset your password.',
     welcome: 'Welcome, {name}',
-    signedInTo: 'Signed in to {office}',
+    signedInTo: '{role} · {branch}',
+    allBranches: 'All branches',
     demo: 'Demo accounts',
     demoHint: 'Pick an account to fill in its credentials, then sign in.',
     admin: 'Office admin',
-    receptionDamascus: 'Damascus reception',
-    receptionAleppo: 'Aleppo reception',
-    otherOffice: 'Another office',
+    managerDamascus: 'Damascus branch manager',
+    employeeDamascus: 'Damascus employee',
+    guideDamascus: 'Tour guide — Damascus',
+    managerAleppo: 'Aleppo branch manager',
+    employeeAleppo: 'Aleppo employee',
   },
 });
 
 /** Seeded demo accounts (apps/api/prisma/seed.ts). Local demo only. */
-const DEMO_PASSWORD = 'Safarni@2026';
+const DEMO_PASSWORD = 'TakeMeHigh@2026';
 const DEMO_ACCOUNTS = [
-  { key: 'admin', email: 'admin@sham-travel.safarni.local' },
-  { key: 'receptionDamascus', email: 'reception.damascus@sham-travel.safarni.local' },
-  { key: 'receptionAleppo', email: 'reception.aleppo@sham-travel.safarni.local' },
-  { key: 'otherOffice', email: 'admin@coast-tours.safarni.local' },
+  { key: 'admin', email: 'admin@takemehigh.local' },
+  { key: 'managerDamascus', email: 'manager.damascus@takemehigh.local' },
+  { key: 'employeeDamascus', email: 'employee.damascus@takemehigh.local' },
+  { key: 'guideDamascus', email: 'guide.damascus@takemehigh.local' },
+  { key: 'managerAleppo', email: 'manager.aleppo@takemehigh.local' },
+  { key: 'employeeAleppo', email: 'employee.aleppo@takemehigh.local' },
 ] as const;
 
 /** Only same-origin dashboard paths are allowed as post-login destinations (no open redirect). */
@@ -110,11 +120,12 @@ export function LoginForm() {
     try {
       const user = await login(values.email.trim(), values.password);
       toast.success(fmt(t.welcome, { name: user.fullName.split(' ')[0] }), {
-        description: user.office ? fmt(t.signedInTo, { office: user.office.name }) : undefined,
+        description: fmt(t.signedInTo, { role: user.role.nameAr, branch: user.branch?.name ?? t.allBranches }),
       });
-      router.replace(safeNext());
+      router.replace(user.mustChangePassword ? '/change-password' : safeNext());
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setFormError(t.wrong);
+      if (err instanceof ApiError && err.status === 401 && /Too many/.test(err.message)) setFormError(t.locked);
+      else if (err instanceof ApiError && err.status === 401) setFormError(t.wrong);
       else if (err instanceof ApiError && err.status === 429) setFormError(t.tooMany);
       else if (err instanceof ApiError && err.isNetwork) setFormError(c.networkError);
       else setFormError(errorMessage(err));

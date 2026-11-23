@@ -507,3 +507,90 @@
     display: none !important;
   }
 }
+
+/* ------------------------------------------------------------------ print (RPT-02, PAY-04)
+   Lists, reports, manifests and receipts print through #print-root; nothing else of the app
+   shows on paper. "Save as PDF" in the print dialog produces the PDF with perfect Arabic. */
+#print-root {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  body.printing > *:not(#print-root) {
+    display: none !important;
+  }
+  body.printing #print-root {
+    display: block;
+    font-size: 10.5pt;
+    color: #111;
+  }
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #1f3864;
+  }
+  .print-office {
+    font-size: 10pt;
+    color: #555;
+  }
+  .print-title {
+    font-size: 16pt;
+    font-weight: 600;
+    margin: 2px 0 0;
+    color: #1f3864;
+  }
+  .print-subtitle {
+    font-size: 9.5pt;
+    color: #555;
+    margin: 2px 0 0;
+  }
+  .print-meta {
+    font-size: 9pt;
+    color: #555;
+    text-align: end;
+  }
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .print-table th {
+    background: #1f3864 !important;
+    color: #fff !important;
+    font-weight: 600;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-table th,
+  .print-table td {
+    border: 1px solid #c9d1dc;
+    padding: 4px 6px;
+    text-align: start;
+    vertical-align: top;
+  }
+  .print-table tr:nth-child(even) td {
+    background: #f2f5fa !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-table thead {
+    display: table-header-group;
+  }
+  .print-table tr {
+    break-inside: avoid;
+  }
+  .print-only-a5 {
+    max-width: 148mm;
+  }
+}

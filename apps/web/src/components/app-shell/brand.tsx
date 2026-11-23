@@ -5,7 +5,7 @@ import { useMessages } from '@/lib/i18n';
 import { common } from '@/lib/i18n/common';
 import { cn } from '@/lib/utils';
 
-/** Ink circle mark + wordmark (سفرني / Safarni). */
+/** Ink circle mark + the TakeMeHigh wordmark. */
 export function Brand({
   className,
   compact = false,

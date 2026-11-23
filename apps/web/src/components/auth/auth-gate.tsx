@@ -22,7 +22,7 @@ const m = defineMessages({
  * until GET /auth/me succeeds; signed-out visitors go to /login?next=<path>.
  */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { status, error, retry, logout } = useAuth();
+  const { status, error, retry, logout, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const t = useMessages(m);
@@ -33,9 +33,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
         pathname && pathname !== '/dashboard' ? `?next=${encodeURIComponent(pathname)}` : '';
       router.replace(`/login${next}`);
     }
-  }, [status, pathname, router]);
+    // AUTH-10: nothing else is reachable until the initial password is changed
+    if (status === 'authenticated' && user?.mustChangePassword) router.replace('/change-password');
+  }, [status, pathname, router, user]);
 
-  if (status === 'authenticated') return <AppShell>{children}</AppShell>;
+  if (status === 'authenticated' && !user?.mustChangePassword) return <AppShell>{children}</AppShell>;
 
   if (status === 'error') {
     return (

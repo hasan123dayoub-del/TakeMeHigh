@@ -1,24 +1,16 @@
 import type { Permission, RoleScope } from '@travelos/shared';
 
-export interface OfficeRef {
-  id: string;
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  defaultCurrencyCode: string;
-  defaultLocale: 'AR' | 'EN';
-}
-
 /** GET /auth/me and the `user` of POST /auth/login */
 export interface AuthUser {
   id: string;
   fullName: string;
   email: string;
-  locale: 'AR' | 'EN';
-  isPlatformAdmin: boolean;
-  office: OfficeRef | null;
-  branch: { id: string; name: string } | null;
-  role: { id: string; name: string; scope: RoleScope } | null;
+  phone: string | null;
+  /** The initial password must be changed before anything else (AUTH-10) */
+  mustChangePassword: boolean;
+  role: { id: string; code: string; nameAr: string; nameEn: string; scope: RoleScope };
+  /** null for the Admin (all branches) */
+  branch: { id: string; name: string; city: string } | null;
   permissions: Permission[];
 }
 
@@ -26,5 +18,6 @@ export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   refreshTokenExpiresAt: string;
+  idleTimeoutMinutes: number;
   user: AuthUser;
 }
