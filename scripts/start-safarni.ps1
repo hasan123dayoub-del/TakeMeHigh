@@ -40,16 +40,33 @@ if ($listening) {
   if (-not $pgBin -or -not (Test-Path $pgData)) {
     Fail "Nothing is listening on port $port. Start your PostgreSQL service (or set SAFARNI_PGDATA to a data folder)."
   }
+  # Keep the log outside the data folder: after an unclean shutdown, recovery syncs every file in it
+  # and stalls on a log file that pg_ctl holds open (Windows "sharing violation").
+  $pgLog = "$pgData.log"
   Info "Starting PostgreSQL ($($pgBin.Name)) from $pgData on port $port ..."
   # Detached, so this window is not tied to the database process.
   Start-Process -FilePath "$($pgBin.FullName)\bin\pg_ctl.exe" `
-    -ArgumentList @('-D', "`"$pgData`"", '-l', "`"$pgData\server.log`"", '-o', "`"-p $port`"", 'start') `
+    -ArgumentList @('-D', "`"$pgData`"", '-l', "`"$pgLog`"", '-o', "`"-p $port`"", 'start') `
     -WindowStyle Hidden
   for ($i = 0; $i -lt 30 -and -not (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue); $i++) {
     Start-Sleep -Milliseconds 500
   }
   if (-not (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)) {
-    Fail "PostgreSQL did not start. See $pgData\server.log"
+    Fail "PostgreSQL did not start. See $pgLog"
+  }
+  # The port opens before the server accepts connections ("the database system is starting up"),
+  # e.g. while it recovers after an unclean shutdown. Wait until it is really ready.
+  $pgIsReady = "$($pgBin.FullName)\bin\pg_isready.exe"
+  if (Test-Path $pgIsReady) {
+    $ready = $false
+    for ($i = 0; $i -lt 180; $i++) {
+      & $pgIsReady -h localhost -p $port -q
+      if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+      Start-Sleep -Milliseconds 500
+    }
+    if (-not $ready) { Fail "PostgreSQL is not accepting connections yet. See $pgLog" }
+  } else {
+    Start-Sleep -Seconds 3
   }
   Ok "PostgreSQL started on port $port"
 }

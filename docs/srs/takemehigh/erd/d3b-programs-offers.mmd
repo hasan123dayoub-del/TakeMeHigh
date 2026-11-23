@@ -1,0 +1,55 @@
+erDiagram
+  trip_categories ||--o{ programs : classifies
+  branches |o--o{ programs : owns
+  programs ||--o{ program_trips : sequence
+  trips ||--o{ program_trips : leg
+  offers ||--o{ offer_service_lines : bundles
+  company_items ||--o{ offer_service_lines : priced_from
+  offers ||--o{ offer_targets : discounts
+  trips |o--o{ offer_targets : target_trip
+  programs |o--o{ offer_targets : target_program
+  programs {
+    bigint id PK
+    string code UK
+    bigint category_id FK
+    bigint branch_id FK "NULL = all branches"
+    string scope "DOMESTIC INTERNATIONAL"
+    int min_passengers
+    int max_passengers
+    datetime registration_deadline
+    bool is_public
+    string status
+    datetime closed_at
+    int final_passenger_count
+    decimal price_per_person "sum of leg trips"
+  }
+  program_trips {
+    bigint program_id PK,FK
+    bigint trip_id PK,FK
+    int sequence_no "UK per program"
+  }
+  offers {
+    bigint id PK
+    string title
+    string kind "BUNDLE DISCOUNT"
+    string discount_mode "PERCENT FIXED"
+    decimal discount_value
+    date valid_from
+    date valid_to
+    int max_seats
+    bool is_public
+    string status
+  }
+  offer_service_lines {
+    bigint id PK
+    bigint offer_id FK
+    bigint company_item_id FK
+    decimal cost_snapshot
+    decimal selling_price
+  }
+  offer_targets {
+    bigint id PK
+    bigint offer_id FK
+    bigint trip_id FK "exactly one of two"
+    bigint program_id FK
+  }

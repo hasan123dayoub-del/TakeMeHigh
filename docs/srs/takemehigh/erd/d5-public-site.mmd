@@ -1,0 +1,63 @@
+erDiagram
+  custom_trip_requests ||--o{ custom_trip_request_items : selects
+  services ||--o{ custom_trip_request_items : of_service
+  companies |o--o{ custom_trip_request_items : chosen_company
+  branches |o--o{ custom_trip_requests : assigned_to
+  achievements ||--o{ achievement_images : has
+  custom_trip_requests {
+    bigint id PK
+    string contact_name
+    string contact_phone
+    int passengers_count
+    date desired_from
+    date desired_to
+    bigint origin_city_id FK
+    bigint destination_city_id FK
+    string status "NEW CONTACTED CONVERTED REJECTED"
+    bigint assigned_branch_id FK
+    bigint converted_booking_id FK
+  }
+  custom_trip_request_items {
+    bigint id PK
+    bigint request_id FK
+    bigint service_id FK
+    bigint company_id FK "NULL when Other"
+    string other_text "free text when Other"
+    string transport_mode
+  }
+  landing_slides {
+    bigint id PK
+    string title
+    string image_path
+    string link_type
+    int sort_order
+    bool is_active
+  }
+  achievements {
+    bigint id PK
+    string title
+    text description
+    date achieved_on
+    bool is_active
+  }
+  achievement_images {
+    bigint id PK
+    bigint achievement_id FK
+    string image_path
+    int sort_order
+  }
+  policies {
+    bigint id PK
+    string slug UK
+    string title
+    text body
+    bool is_active
+  }
+  site_settings {
+    bigint id PK
+    string office_name
+    string logo_path
+    string whatsapp_number
+    string whatsapp_template
+    string default_currency
+  }

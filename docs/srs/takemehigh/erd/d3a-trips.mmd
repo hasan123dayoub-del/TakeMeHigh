@@ -1,0 +1,60 @@
+erDiagram
+  trip_categories ||--o{ trips : classifies
+  branches |o--o{ trips : owns
+  cities ||--o{ trips : origin_destination
+  trips ||--o{ trip_service_lines : composed_of
+  company_items ||--o{ trip_service_lines : priced_from
+  trips ||--o{ trip_pickup_points : boards_at
+  cities ||--o{ trip_pickup_points : city
+  trips ||--o{ trip_guides : led_by
+  users ||--o{ trip_guides : guide
+  trip_categories {
+    bigint id PK
+    string name_ar
+    bool is_active
+  }
+  trips {
+    bigint id PK
+    string code UK
+    bigint category_id FK
+    bigint branch_id FK "NULL = all branches"
+    bigint origin_city_id FK
+    bigint destination_city_id FK
+    string scope "DOMESTIC INTERNATIONAL"
+    datetime starts_at
+    datetime ends_at
+    datetime registration_deadline
+    int min_passengers
+    int max_passengers
+    bool is_public
+    string status "DRAFT OPEN CLOSED CONFIRMED CANCELLED COMPLETED"
+    datetime closed_at
+    string closure_reason "DEADLINE MANUAL"
+    int final_passenger_count
+    decimal price_per_person "sum of line prices + snapshot"
+  }
+  trip_service_lines {
+    bigint id PK
+    bigint trip_id FK
+    bigint company_item_id FK
+    int sequence_no
+    datetime starts_at
+    datetime ends_at
+    bigint from_city_id FK
+    bigint to_city_id FK
+    decimal cost_snapshot
+    string profit_mode "PERCENT FIXED"
+    decimal profit_value
+    decimal selling_price
+  }
+  trip_pickup_points {
+    bigint id PK
+    bigint trip_id FK
+    bigint city_id FK
+    time pickup_time
+    decimal surcharge "default 0"
+  }
+  trip_guides {
+    bigint trip_id PK,FK
+    bigint user_id PK,FK
+  }

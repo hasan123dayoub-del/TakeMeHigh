@@ -1,0 +1,71 @@
+erDiagram
+  countries ||--o{ cities : has
+  cities ||--o{ branches : located_in
+  branches ||--o{ users : employs
+  roles ||--o{ users : assigned
+  roles ||--o{ role_permissions : grants
+  permissions ||--o{ role_permissions : in
+  users ||--o| guide_profiles : may_have
+  users ||--o{ audit_logs : performs
+  countries {
+    bigint id PK
+    string iso_code UK
+    string name_ar
+    string name_en
+    bool is_active
+  }
+  cities {
+    bigint id PK
+    bigint country_id FK
+    string name_ar
+    string kind "GOVERNORATE CITY TOURIST_SPOT"
+    bool is_active
+  }
+  branches {
+    bigint id PK
+    bigint city_id FK
+    string name
+    string phone
+    string whatsapp
+    bool show_on_landing
+    bool is_active
+  }
+  roles {
+    bigint id PK
+    string code UK "ADMIN BRANCH_MANAGER EMPLOYEE TOUR_GUIDE"
+    string name_ar
+    string scope "ALL BRANCH ASSIGNED"
+    bool is_system
+  }
+  permissions {
+    bigint id PK
+    string code UK "module.action"
+    string module
+  }
+  role_permissions {
+    bigint role_id PK,FK
+    bigint permission_id PK,FK
+  }
+  users {
+    bigint id PK
+    bigint role_id FK
+    bigint branch_id FK "NULL only for Admin"
+    string full_name
+    string email UK
+    string password_hash
+    bool is_active
+  }
+  guide_profiles {
+    bigint user_id PK,FK
+    string languages
+    string license_no
+  }
+  audit_logs {
+    bigint id PK
+    bigint user_id FK
+    string action
+    string entity
+    bigint entity_id
+    json changes
+    datetime created_at
+  }

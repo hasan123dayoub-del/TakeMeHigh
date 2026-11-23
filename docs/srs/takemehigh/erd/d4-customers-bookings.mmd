@@ -1,0 +1,71 @@
+erDiagram
+  customers ||--o{ customer_documents : holds
+  customers ||--o{ bookings : pays_as_payer
+  branches ||--o{ bookings : registered_at
+  users ||--o{ bookings : created_by
+  trips |o--o{ bookings : books
+  programs |o--o{ bookings : books
+  offers |o--o{ bookings : books
+  bookings ||--o{ booking_passengers : includes
+  customers ||--o{ booking_passengers : travels_as
+  booking_passengers ||--o{ visa_applications : needs
+  countries ||--o{ visa_applications : for_country
+  bookings ||--o{ payments : paid_by
+  payments |o--o| payments : refund_of
+  customers {
+    bigint id PK
+    string full_name
+    string phone
+    string nationality
+    date birth_date
+    string gender
+  }
+  customer_documents {
+    bigint id PK
+    bigint customer_id FK
+    string doc_type "SYRIAN_ID PASSPORT VISA RESIDENCE"
+    string doc_number
+    date expires_on
+    string file_path
+  }
+  bookings {
+    bigint id PK
+    string booking_no UK
+    bigint trip_id FK "exactly one of three"
+    bigint program_id FK
+    bigint offer_id FK
+    bigint payer_customer_id FK
+    bigint pickup_point_id FK
+    bigint branch_id FK
+    bigint created_by FK
+    string status "PENDING CONFIRMED WAITLIST CANCELLED"
+    decimal price_per_person_snapshot
+    decimal total_amount
+  }
+  booking_passengers {
+    bigint id PK
+    bigint booking_id FK
+    bigint customer_id FK
+    bigint document_id FK
+    string seat_label
+  }
+  visa_applications {
+    bigint id PK
+    bigint passenger_id FK
+    bigint country_id FK
+    string status "NOT_STARTED SUBMITTED APPROVED REJECTED"
+    string visa_number
+    date expires_on
+  }
+  payments {
+    bigint id PK
+    string receipt_no UK
+    bigint booking_id FK
+    bigint refund_of_id FK
+    string kind "PARTIAL FULL REFUND"
+    decimal amount
+    string currency
+    string payer_name
+    datetime paid_at
+    bigint received_by FK
+  }

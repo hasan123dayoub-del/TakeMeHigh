@@ -1,0 +1,60 @@
+erDiagram
+  services ||--o{ companies : categorizes
+  countries ||--o{ companies : based_in
+  companies ||--o{ company_items : offers
+  companies ||--o| integration_connections : connects_via
+  integration_connections ||--o{ integration_sync_logs : logs
+  services ||--o{ profit_rules : scopes
+  companies ||--o{ profit_rules : scopes
+  services {
+    bigint id PK
+    string code UK "HOTEL TRANSPORT RESTAURANT"
+    string name_ar
+    bool is_active
+  }
+  companies {
+    bigint id PK
+    bigint service_id FK
+    bigint country_id FK
+    string name
+    string transport_mode "LAND SEA AIR - transport only"
+    string contact_phone
+    bool is_integrated
+    bool is_active
+  }
+  company_items {
+    bigint id PK
+    bigint company_id FK
+    string name "room type, route, menu"
+    bigint from_city_id FK "transport only"
+    bigint to_city_id FK "transport only"
+    decimal cost_per_person
+    string currency
+    string source "INTEGRATION MANUAL"
+    string external_ref
+    datetime last_synced_at
+    bool is_active
+  }
+  integration_connections {
+    bigint id PK
+    bigint company_id FK,UK
+    string base_url
+    string credentials_encrypted
+    string status
+    datetime last_success_at
+  }
+  integration_sync_logs {
+    bigint id PK
+    bigint connection_id FK
+    string result "SUCCESS FAILED"
+    int items_updated
+    text error
+    datetime started_at
+  }
+  profit_rules {
+    bigint id PK
+    bigint service_id FK
+    bigint company_id FK "optional"
+    string mode "PERCENT FIXED"
+    decimal value
+  }
