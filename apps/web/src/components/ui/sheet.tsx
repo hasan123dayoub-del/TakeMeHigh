@@ -43,7 +43,7 @@ export function SheetContent({
       >
         {children}
         <SheetPrimitive.Close
-          className="absolute top-4 right-4 grid size-9 place-items-center rounded-full border border-border bg-surface-raised text-muted transition-colors hover:text-foreground"
+          className="absolute top-4 end-4 grid size-9 place-items-center rounded-full border border-border bg-surface-raised text-muted transition-colors hover:text-foreground"
           aria-label="Close"
         >
           <X className="size-4" />
@@ -54,7 +54,7 @@ export function SheetContent({
 }
 
 export function SheetHeader({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('grid gap-1 p-5 pr-16', className)} {...props} />;
+  return <div className={cn('grid gap-1 p-5 pe-16', className)} {...props} />;
 }
 
 export function SheetBody({ className, ...props }: ComponentProps<'div'>) {

@@ -297,7 +297,12 @@ export class CmsService {
         data: {
           title: dto.title,
           description: dto.description,
-          achievedOn: dto.achievedOn ? new Date(dto.achievedOn) : undefined,
+          achievedOn:
+            dto.achievedOn === undefined
+              ? undefined
+              : dto.achievedOn
+                ? new Date(dto.achievedOn)
+                : null,
           sortOrder: dto.sortOrder,
           isActive: dto.isActive,
         },

@@ -22,7 +22,8 @@ import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { api } from '@/lib/api';
+import { toast } from 'sonner';
+import { api, errorMessage } from '@/lib/api';
 import { useCan } from '@/lib/auth';
 import { useApiMutation, useInvalidate, useLookups, useName } from '@/lib/hooks';
 import { defineMessages, useMessages } from '@/lib/i18n';
@@ -201,8 +202,13 @@ export function BranchesView() {
         confirmLabel={toggling?.isActive ? t.deactivate : t.activate}
         onConfirm={async () => {
           if (!toggling) return;
-          await api.patch(`/branches/${toggling.id}/active`, { isActive: !toggling.isActive });
-          await invalidate('/branches', '/lookups');
+          try {
+            await api.patch(`/branches/${toggling.id}/active`, { isActive: !toggling.isActive });
+            await invalidate('/branches', '/lookups');
+          } catch (e) {
+            toast.error(errorMessage(e));
+            throw e;
+          }
         }}
       />
     </div>

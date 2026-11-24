@@ -49,7 +49,7 @@ export function DialogContent({
         {children}
         {!hideClose && (
           <DialogPrimitive.Close
-            className="absolute top-4 right-4 grid size-8 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
+            className="absolute top-4 end-4 grid size-8 place-items-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
             aria-label="Close"
           >
             <X className="size-4" />
@@ -61,7 +61,7 @@ export function DialogContent({
 }
 
 export function DialogHeader({ className, ...props }: ComponentProps<'div'>) {
-  return <div className={cn('grid gap-1.5 pr-8', className)} {...props} />;
+  return <div className={cn('grid gap-1.5 pe-8', className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }: ComponentProps<'div'>) {

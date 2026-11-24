@@ -7,7 +7,14 @@ import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ApiError } from '@/lib/api';
 import { AuthProvider } from '@/lib/auth';
-import { LocaleProvider, type Locale } from '@/lib/i18n';
+import { LocaleProvider, useLocale, type Locale } from '@/lib/i18n';
+import { Direction } from 'radix-ui';
+
+/** Every Radix primitive (tabs, selects, menus) follows the UI direction (RTL in Arabic). */
+function RadixDirection({ children }: { children: ReactNode }) {
+  const { dir } = useLocale();
+  return <Direction.Provider dir={dir}>{children}</Direction.Provider>;
+}
 
 function makeQueryClient() {
   return new QueryClient({
@@ -69,12 +76,14 @@ export function Providers({ children, locale }: { children: ReactNode; locale: L
       scriptProps={themeScriptProps}
     >
       <LocaleProvider initialLocale={locale}>
+      <RadixDirection>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider delayDuration={250}>{children}</TooltipProvider>
         </AuthProvider>
         <ThemedToaster />
       </QueryClientProvider>
+      </RadixDirection>
       </LocaleProvider>
     </ThemeProvider>
   );

@@ -6,7 +6,7 @@ export function Table({ className, ...props }: ComponentProps<'table'>) {
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
       <table
         data-slot="table"
-        className={cn('w-full caption-bottom border-collapse text-left text-[13px]', className)}
+        className={cn('w-full caption-bottom border-collapse text-start text-[13px]', className)}
         {...props}
       />
     </div>

@@ -32,36 +32,86 @@ const { values } = parseArgs({
 const PASSWORD_RULE = /^(?=.*[A-Za-z؀-ۿ])(?=.*\d).{10,128}$/;
 
 async function main() {
-  const missing = (['office', 'email', 'password', 'whatsapp'] as const).filter((k) => !values[k]);
-  if (missing.length) throw new Error(`Missing: ${missing.map((m) => `--${m}`).join(' ')}`);
-  if (!PASSWORD_RULE.test(values.password!)) throw new Error('The password needs at least 10 characters with a letter and a digit');
-  if (!/^\d{8,15}$/.test(values.whatsapp!.replace(/^\+/, ''))) throw new Error('--whatsapp: international number, digits only');
+  const missing = (['office', 'email', 'password', 'whatsapp'] as const).filter(
+    (k) => !values[k],
+  );
+  if (missing.length)
+    throw new Error(`Missing: ${missing.map((m) => `--${m}`).join(' ')}`);
+  if (!PASSWORD_RULE.test(values.password!))
+    throw new Error(
+      'The password needs at least 10 characters with a letter and a digit',
+    );
+  if (!/^\d{8,15}$/.test(values.whatsapp!.replace(/^\+/, '')))
+    throw new Error('--whatsapp: international number, digits only');
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
+  const prisma = new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+  });
   try {
-    if ((await prisma.siteSetting.count()) || (await prisma.user.count())) throw new Error('This database is already installed.');
+    if ((await prisma.siteSetting.count()) || (await prisma.user.count()))
+      throw new Error('This database is already installed.');
 
     await prisma.$transaction(async (tx) => {
-      await tx.permission.createMany({ data: ALL_PERMISSIONS.map((code) => ({ code, module: PERMISSIONS[code].module, description: PERMISSIONS[code].en })) });
-      const perms = new Map((await tx.permission.findMany()).map((p) => [p.code, p.id]));
+      await tx.permission.createMany({
+        data: ALL_PERMISSIONS.map((code) => ({
+          code,
+          module: PERMISSIONS[code].module,
+          description: PERMISSIONS[code].en,
+        })),
+      });
+      const perms = new Map(
+        (await tx.permission.findMany()).map((p) => [p.code, p.id]),
+      );
       const roleIds: Record<string, string> = {};
       for (const r of SYSTEM_ROLES) {
         const role = await tx.role.create({
-          data: { code: r.code, nameAr: r.nameAr, nameEn: r.nameEn, description: r.description, scope: r.scope, isSystem: true, permissions: { create: r.permissions.map((p) => ({ permissionId: perms.get(p)! })) } },
+          data: {
+            code: r.code,
+            nameAr: r.nameAr,
+            nameEn: r.nameEn,
+            description: r.description,
+            scope: r.scope,
+            isSystem: true,
+            permissions: {
+              create: r.permissions.map((p) => ({
+                permissionId: perms.get(p)!,
+              })),
+            },
+          },
         });
         roleIds[r.code] = role.id;
       }
 
       await tx.currency.createMany({
         data: [
-          { code: 'SYP', nameAr: 'ليرة سورية', nameEn: 'Syrian pound', symbol: 'ل.س', decimals: 0 },
-          { code: 'USD', nameAr: 'دولار أمريكي', nameEn: 'US dollar', symbol: '$', decimals: 2 },
-          { code: 'SAR', nameAr: 'ريال سعودي', nameEn: 'Saudi riyal', symbol: 'ر.س', decimals: 2 },
+          {
+            code: 'SYP',
+            nameAr: 'ليرة سورية',
+            nameEn: 'Syrian pound',
+            symbol: 'ل.س',
+            decimals: 0,
+          },
+          {
+            code: 'USD',
+            nameAr: 'دولار أمريكي',
+            nameEn: 'US dollar',
+            symbol: '$',
+            decimals: 2,
+          },
+          {
+            code: 'SAR',
+            nameAr: 'ريال سعودي',
+            nameEn: 'Saudi riyal',
+            symbol: 'ر.س',
+            decimals: 2,
+          },
         ],
       });
 
       // REF-05: Syria and its 14 governorates; other countries are added by the Admin.
-      const sy = await tx.country.create({ data: { isoCode: 'SY', nameAr: 'سوريا', nameEn: 'Syria' } });
+      const sy = await tx.country.create({
+        data: { isoCode: 'SY', nameAr: 'سوريا', nameEn: 'Syria' },
+      });
       await tx.city.createMany({
         data: [
           ['دمشق', 'Damascus'],
@@ -78,18 +128,46 @@ async function main() {
           ['درعا', 'Daraa'],
           ['السويداء', 'As-Suwayda'],
           ['القنيطرة', 'Quneitra'],
-        ].map(([ar, en]) => ({ countryId: sy.id, nameAr: ar, nameEn: en, kind: 'GOVERNORATE' as const })),
+        ].map(([ar, en]) => ({
+          countryId: sy.id,
+          nameAr: ar,
+          nameEn: en,
+          kind: 'GOVERNORATE' as const,
+        })),
       });
 
       // REF-07: the two categories named in the brief; the Admin adds more.
-      await tx.tripCategory.createMany({ data: [{ nameAr: 'ثقافي', nameEn: 'Cultural' }, { nameAr: 'ديني', nameEn: 'Religious' }] });
+      await tx.tripCategory.createMany({
+        data: [
+          { nameAr: 'ثقافي', nameEn: 'Cultural' },
+          { nameAr: 'ديني', nameEn: 'Religious' },
+        ],
+      });
 
       // SUP-01: the three core services
       await tx.service.createMany({
         data: [
-          { code: 'HOTEL', kind: 'HOTEL', nameAr: 'فندق', nameEn: 'Hotel', isSystem: true },
-          { code: 'TRANSPORT', kind: 'TRANSPORT', nameAr: 'نقل', nameEn: 'Transport', isSystem: true },
-          { code: 'RESTAURANT', kind: 'RESTAURANT', nameAr: 'مطعم', nameEn: 'Restaurant', isSystem: true },
+          {
+            code: 'HOTEL',
+            kind: 'HOTEL',
+            nameAr: 'فندق',
+            nameEn: 'Hotel',
+            isSystem: true,
+          },
+          {
+            code: 'TRANSPORT',
+            kind: 'TRANSPORT',
+            nameAr: 'نقل',
+            nameEn: 'Transport',
+            isSystem: true,
+          },
+          {
+            code: 'RESTAURANT',
+            kind: 'RESTAURANT',
+            nameAr: 'مطعم',
+            nameEn: 'Restaurant',
+            isSystem: true,
+          },
         ],
       });
 
@@ -98,24 +176,33 @@ async function main() {
           id: 1,
           officeName: values.office!,
           whatsappNumber: values.whatsapp!.replace(/^\+/, ''),
-          whatsappTemplate: 'مرحباً، أرغب بالحجز في: {title} ({code})\nالسعر المعلن: {price}\n{link}',
-          defaultCurrencyCode: values.currency!,
+          whatsappTemplate:
+            'مرحباً، أرغب بالحجز في: {title} ({code})\nالسعر المعلن: {price}\n{link}',
+          defaultCurrencyCode: values.currency,
         },
       });
 
       // AUTH-10: the first Admin, who must change the password at the first sign-in
       await tx.user.create({
         data: {
-          fullName: values.name!,
+          fullName: values.name,
           email: values.email!.trim().toLowerCase(),
           passwordHash: await bcrypt.hash(values.password!, 12),
           mustChangePassword: true,
           roleId: roleIds.ADMIN,
         },
       });
-      await tx.auditLog.create({ data: { action: 'system.installed', entityType: 'system', summary: `Installed for ${values.office}` } });
+      await tx.auditLog.create({
+        data: {
+          action: 'system.installed',
+          entityType: 'system',
+          summary: `Installed for ${values.office}`,
+        },
+      });
     });
-    console.log(`Installed. Sign in as ${values.email} and change the password. Next: add a branch, then the staff.`);
+    console.log(
+      `Installed. Sign in as ${values.email} and change the password. Next: add a branch, then the staff.`,
+    );
   } finally {
     await prisma.$disconnect();
   }

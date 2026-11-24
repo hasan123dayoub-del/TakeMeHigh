@@ -82,7 +82,9 @@ function UrlResourceTable<T extends RowData>(props: ResourceTableProps<T>) {
     for (const k of props.filterKeys ?? []) d[k] = undefined;
     return d;
   }, [props.defaultSort, props.filterKeys]);
-  const [state, set] = useUrlState(defaults);
+  const [urlState, set] = useUrlState(defaults);
+  // only this table's keys reach the API (the page may keep other URL state, e.g. a tab)
+  const state = useMemo(() => Object.fromEntries(Object.keys(defaults).map((k) => [k, urlState[k]])), [urlState, defaults]);
   return <TableBody {...props} state={state} set={set} />;
 }
 

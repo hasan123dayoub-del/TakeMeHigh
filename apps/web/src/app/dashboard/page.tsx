@@ -1,5 +1,7 @@
+import { DashboardHome } from '@/components/home/dashboard-home';
+
 export const instant = false;
 
-export default function DashboardHome() {
-  return null;
+export default function Page() {
+  return <DashboardHome />;
 }

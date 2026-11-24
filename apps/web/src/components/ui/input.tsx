@@ -32,8 +32,8 @@ export function Input({ className, startIcon, endSlot, type = 'text', ...props }
       className={cn(
         fieldBase,
         'h-11 px-4',
-        startIcon && 'pl-10',
-        endSlot && 'pr-11',
+        startIcon && 'ps-10',
+        endSlot && 'pe-11',
         'file:mr-3 file:border-0 file:bg-transparent file:text-sm file:font-medium',
         plain && className,
       )}
@@ -43,12 +43,12 @@ export function Input({ className, startIcon, endSlot, type = 'text', ...props }
   return (
     <div className={cn('relative', className)}>
       {startIcon && (
-        <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-subtle [&_svg]:size-4">
+        <span className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-subtle [&_svg]:size-4">
           {startIcon}
         </span>
       )}
       {input}
-      {endSlot && <span className="absolute top-1/2 right-1.5 -translate-y-1/2">{endSlot}</span>}
+      {endSlot && <span className="absolute top-1/2 end-1.5 -translate-y-1/2">{endSlot}</span>}
     </div>
   );
 }

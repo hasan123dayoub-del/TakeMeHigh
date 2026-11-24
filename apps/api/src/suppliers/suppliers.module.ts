@@ -846,8 +846,16 @@ export class SuppliersController {
 
   @Get('companies/:id')
   @RequirePermissions('companies.view')
-  company(@Param('id', ParseUUIDPipe) id: string) {
-    return this.suppliers.company(id);
+  async company(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const company = await this.suppliers.company(id);
+    // PRC-06: profit rules are part of the price breakdown
+    const canSee =
+      user.permissions.includes('pricing.view_breakdown') ||
+      user.permissions.includes('pricing.set_profit');
+    return canSee ? company : { ...company, profitRules: [] };
   }
 
   @Post('companies')

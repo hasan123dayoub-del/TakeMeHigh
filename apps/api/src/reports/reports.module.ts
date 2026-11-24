@@ -19,6 +19,7 @@ import {
 import type { AuthUser } from '../common/auth.types';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import {
+  EndOfDay,
   pageArgs,
   paginate,
   PaginationQueryDto,
@@ -63,7 +64,7 @@ export class StatsQueryDto {
 
 export class RangeQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() from?: Date;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() to?: Date;
+  @ApiPropertyOptional() @IsOptional() @EndOfDay() @IsDate() to?: Date;
   @ApiPropertyOptional() @IsOptional() @IsUUID() branchId?: string;
 }
 

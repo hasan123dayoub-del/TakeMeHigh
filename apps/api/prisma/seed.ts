@@ -1011,12 +1011,14 @@ async function main() {
       }),
     );
     const totals = tripTotals(lines);
-    const destCountry = (
-      await prisma.city.findUniqueOrThrow({
-        where: { id: cities[s.destination] },
-        include: { country: true },
-      })
-    ).country.isoCode;
+    // TRP-02: international as soon as the origin or the destination is abroad
+    const ends = await prisma.city.findMany({
+      where: { id: { in: [cities[s.origin], cities[s.destination]] } },
+      include: { country: true },
+    });
+    const destCountry = ends.every((c) => c.country.isoCode === 'SY')
+      ? 'SY'
+      : 'XX';
     const trip = await prisma.trip.create({
       data: {
         code: await nextNumber('TR', 4, s.createdAt ?? new Date()),
@@ -1950,9 +1952,6 @@ async function main() {
   });
 
   // Umrah (international, USD) with passports, the early-booking discount and visas
-  const umrahPrice = (
-    await prisma.program.findUniqueOrThrow({ where: { id: programIds.UMRAH } })
-  ).pricePerPerson.toString();
   const umrahOffer = await prisma.offer.findFirstOrThrow({
     where: { title: 'خصم الحجز المبكر للعمرة' },
   });

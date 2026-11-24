@@ -12,13 +12,16 @@ import { useLocale } from '@/lib/i18n';
  * else on the page is hidden by the `@media print` rules in globals.css (#print-root).
  */
 export function PrintPortal({ children, onDone }: { children: ReactNode; onDone: () => void }) {
-  const [host, setHost] = useState<HTMLElement | null>(null);
-  useEffect(() => {
+  // PrintPortal only mounts after a user action, so document exists here
+  const [host] = useState<HTMLElement>(() => {
     const el = document.createElement('div');
     el.id = 'print-root';
+    return el;
+  });
+  useEffect(() => {
+    const el = host;
     document.body.appendChild(el);
     document.body.classList.add('printing');
-    setHost(el);
     const after = () => onDone();
     window.addEventListener('afterprint', after);
     return () => {
@@ -26,16 +29,15 @@ export function PrintPortal({ children, onDone }: { children: ReactNode; onDone:
       document.body.classList.remove('printing');
       el.remove();
     };
-  }, [onDone]);
+  }, [onDone, host]);
 
   useEffect(() => {
-    if (!host) return;
     // let images and fonts settle before opening the print dialog
     const t = setTimeout(() => window.print(), 350);
     return () => clearTimeout(t);
   }, [host]);
 
-  return host ? createPortal(children, host) : null;
+  return createPortal(children, host);
 }
 
 /** Office header used on every printed list, report and receipt (RPT-02). */

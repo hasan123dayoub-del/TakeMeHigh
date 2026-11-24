@@ -83,14 +83,14 @@ export function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        'relative flex w-full cursor-default items-center rounded-[10px] py-2 pr-8 pl-2.5 text-sm outline-none select-none',
+        'relative flex w-full cursor-default items-center rounded-[10px] py-2 pe-8 ps-2.5 text-sm outline-none select-none',
         'data-highlighted:bg-surface data-highlighted:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
         className,
       )}
       {...props}
     >
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-      <span className="absolute right-2.5 flex size-4 items-center justify-center">
+      <span className="absolute end-2.5 flex size-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
           <Check className="size-4 text-primary" />
         </SelectPrimitive.ItemIndicator>

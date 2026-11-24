@@ -110,3 +110,15 @@ export const ilike = (s: string) => ({
   contains: s,
   mode: 'insensitive' as const,
 });
+
+/**
+ * "to" filters: a bare date (2026-11-30) means the END of that day, so the last day is
+ * included; a full timestamp is used as is.
+ */
+export const EndOfDay = () =>
+  Transform(({ value }: { value: unknown }) => {
+    if (typeof value !== 'string') return value;
+    return /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? new Date(`${value}T23:59:59.999Z`)
+      : new Date(value);
+  });

@@ -254,6 +254,10 @@ export class BookingsService {
     return paginate(
       rows.map((b) => ({
         ...b,
+        // PRC-06: supplier cost only for the price breakdown permission
+        costPerPerson: user.permissions.includes('pricing.view_breakdown')
+          ? b.costPerPerson
+          : undefined,
         ...money(b),
         targetTitle: b.trip?.title ?? b.program?.title ?? b.offer?.title ?? '',
       })),

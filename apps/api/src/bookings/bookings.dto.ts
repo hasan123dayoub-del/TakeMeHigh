@@ -24,7 +24,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { PaginationQueryDto } from '../common/dto/pagination.dto';
+import { EndOfDay, PaginationQueryDto } from '../common/dto/pagination.dto';
 
 const toBool = ({ value }: { value: unknown }) =>
   value === 'true' ? true : value === 'false' ? false : value;
@@ -91,7 +91,7 @@ export class BookingQueryDto extends PaginationQueryDto {
   @IsIn(['UNPAID', 'PARTIAL', 'PAID'])
   paymentState?: 'UNPAID' | 'PARTIAL' | 'PAID';
   @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() from?: Date;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() to?: Date;
+  @ApiPropertyOptional() @IsOptional() @EndOfDay() @IsDate() to?: Date;
 }
 
 // ------------------------------------------------------------------ payments
@@ -135,7 +135,7 @@ export class PaymentQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() receivedById?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() currencyCode?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() from?: Date;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() to?: Date;
+  @ApiPropertyOptional() @IsOptional() @EndOfDay() @IsDate() to?: Date;
 }
 
 // ------------------------------------------------------------------ visas

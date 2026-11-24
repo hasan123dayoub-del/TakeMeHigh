@@ -48,6 +48,42 @@ import {
   type AdapterContext,
 } from './adapters';
 import { SandboxSupplierController } from './sandbox.controller';
+import {
+  ExportService,
+  type ExportSpec,
+} from '../common/export/export.service';
+
+const LOGS_EXPORT: ExportSpec<{
+  startedAt: Date;
+  trigger: string;
+  result: string;
+  itemsCreated: number;
+  itemsUpdated: number;
+  costChanges: number;
+  error: string | null;
+}> = {
+  filename: 'sync-log',
+  title: 'سجل المزامنة',
+  columns: [
+    {
+      header: 'الوقت',
+      value: (r) => r.startedAt.toISOString().replace('T', ' ').slice(0, 16),
+      width: 18,
+    },
+    {
+      header: 'المُشغّل',
+      value: (r) => (r.trigger === 'MANUAL' ? 'يدوي' : 'مجدول'),
+    },
+    {
+      header: 'النتيجة',
+      value: (r) => (r.result === 'SUCCESS' ? 'نجاح' : 'فشل'),
+    },
+    { header: 'جديد', value: (r) => r.itemsCreated },
+    { header: 'محدَّث', value: (r) => r.itemsUpdated },
+    { header: 'تغيّر الكلفة', value: (r) => r.costChanges },
+    { header: 'الخطأ', value: (r) => r.error, width: 40 },
+  ],
+};
 
 const TIMEOUT_MS = 10_000;
 /** INT-06: costs not refreshed for this long are flagged "outdated". */
@@ -504,7 +540,10 @@ export class EnableDto {
 @RequirePermissions('integrations.manage')
 @Controller('integrations')
 export class IntegrationsController {
-  constructor(private readonly integrations: IntegrationsService) {}
+  constructor(
+    private readonly integrations: IntegrationsService,
+    private readonly exporter: ExportService,
+  ) {}
 
   @Get('adapters')
   adapters() {
@@ -564,11 +603,17 @@ export class IntegrationsController {
 
   @Get(':companyId/logs')
   @ApiOperation({ summary: 'Sync history (INT-05)' })
-  logs(
+  async logs(
+    @CurrentUser() user: AuthUser,
     @Param('companyId', ParseUUIDPipe) companyId: string,
     @Query() q: PaginationQueryDto,
   ) {
-    return this.integrations.logs(companyId, q);
+    return this.exporter.respond(
+      q,
+      await this.integrations.logs(companyId, q),
+      LOGS_EXPORT,
+      user,
+    );
   }
 }
 

@@ -16,6 +16,7 @@ import {
 import type { AuthUser } from '../common/auth.types';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
 import {
+  EndOfDay,
   ilike,
   pageArgs,
   paginate,
@@ -42,7 +43,7 @@ export class AuditQueryDto extends PaginationQueryDto {
   @MaxLength(64)
   action?: string;
   @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() from?: Date;
-  @ApiPropertyOptional() @IsOptional() @Type(() => Date) @IsDate() to?: Date;
+  @ApiPropertyOptional() @IsOptional() @EndOfDay() @IsDate() to?: Date;
 }
 
 const include = {

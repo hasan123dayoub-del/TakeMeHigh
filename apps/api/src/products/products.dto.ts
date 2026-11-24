@@ -34,7 +34,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { PaginationQueryDto } from '../common/dto/pagination.dto';
+import { EndOfDay, PaginationQueryDto } from '../common/dto/pagination.dto';
 
 const toBool = ({ value }: { value: unknown }) =>
   value === 'true' ? true : value === 'false' ? false : value;
@@ -85,7 +85,7 @@ export class TripQueryDto extends PaginationQueryDto {
   from?: Date;
   @ApiPropertyOptional({ description: 'Trips starting on/before' })
   @IsOptional()
-  @Type(() => Date)
+  @EndOfDay()
   @IsDate()
   to?: Date;
   @ApiPropertyOptional()
