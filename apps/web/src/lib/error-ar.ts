@@ -92,7 +92,7 @@ const RULES: [RegExp, string][] = [
   [/^The booking is already (\w+)$/, 'الحجز في هذه الحالة مسبقاً'],
   [/^Passengers change only before confirmation.*$/, 'يُعدَّل الركاب قبل التأكيد فقط'],
   [/^The new trip does not have enough seats$/, 'لا مقاعد كافية في الرحلة الجديدة'],
-  [/^The amount is more than the remaining balance \((.+)\).*$/, 'المبلغ أكبر من المتبقي ($1)'],
+  [/^The amount is more than the remaining balance \((.+?)\).*$/, 'المبلغ أكبر من المتبقي ($1)'],
   [/^The amount must be greater than zero$/, 'المبلغ يجب أن يكون أكبر من صفر'],
   [/^At most (.+) of this payment can still be refunded$/, 'يمكن استرجاع $1 كحد أقصى من هذه الدفعة'],
   [/^A cancelled booking takes no payments.*$/, 'الحجز الملغى لا يقبل دفعات؛ سجّل استرجاعاً'],
