@@ -8,3 +8,6 @@
 *.pptx binary
 *.pdf binary
 *.cmd text eol=crlf
+*.docx binary
+*.xlsx binary
+*.zip binary
