@@ -12,6 +12,8 @@
  * it; production should move the refresh token to an httpOnly SameSite cookie set by the API.
  */
 
+import { toArabic } from './error-ar';
+
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api').replace(/\/+$/, '');
 
 const ACCESS_KEY = 'takemehigh.access';
@@ -95,7 +97,9 @@ export class ApiError extends Error {
 
 /** Human-readable message for any thrown value (toasts and inline errors). API messages are shown verbatim. */
 export function errorMessage(err: unknown, fallback = 'Something went wrong. Please try again.') {
-  if (err instanceof ApiError) return err.messages.join(' ');
+  // The API answers in English; the Arabic UI shows Arabic messages (unknown ones stay as they are).
+  const ar = typeof document !== 'undefined' && document.documentElement.lang === 'ar';
+  if (err instanceof ApiError) return err.messages.map((x) => (ar ? toArabic(x) : x)).join(' ');
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }
