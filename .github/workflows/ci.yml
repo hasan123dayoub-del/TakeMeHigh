@@ -57,6 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NEXT_PUBLIC_API_URL: http://localhost:3001/api
+      # npm ci generates the Prisma client of the API workspace, whose config reads this variable
+      DATABASE_URL: postgresql://unused:unused@localhost:5432/unused
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
