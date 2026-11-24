@@ -40,8 +40,8 @@ export function ProgramPassengers({ programId }: { programId: string }) {
       <Card className="p-4 sm:p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="heading-display text-[15px]">{t.passengersTitle}</h3>
-            <p className="mt-1 text-[13px] text-muted">{fmt(t.passengersCount, { n: q.data?.total ?? 0 })}</p>
+            <h3 className="heading-display text-[16px]">{t.passengersTitle}</h3>
+            <p className="mt-1 text-[14px] text-muted">{fmt(t.passengersCount, { n: q.data?.total ?? 0 })}</p>
           </div>
           <Button variant="secondary" size="sm" disabled={!rows.length} onClick={() => setPrinting(true)}>
             <Printer /> {t.printList}
@@ -51,7 +51,7 @@ export function ProgramPassengers({ programId }: { programId: string }) {
           <EmptyState size="sm" icon={Users} title={t.noPassengers} description={t.noPassengersBody} />
         ) : (
           <div className="-mx-4 overflow-x-auto px-4 sm:-mx-5 sm:px-5">
-            <table className="w-full min-w-[860px] border-collapse text-start text-[13px]">
+            <table className="w-full min-w-[860px] border-collapse text-start text-[14px]">
               <thead>
                 <tr className="text-xs text-muted">
                   {['#', t.passengerName, t.phone, t.nationality, t.document, t.bookingNo, t.bookingStatus, t.branch].map((h) => (

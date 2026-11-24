@@ -12,7 +12,7 @@ import { discountLabel, fDate, money, nameOf, telHref } from './utils';
 
 export function Breadcrumbs({ t, current, section }: { t: LandingMessages; current: string; section: { href: string; label: string } }) {
   return (
-    <nav aria-label={t.breadcrumb} className="text-[13px] text-muted">
+    <nav aria-label={t.breadcrumb} className="text-[14px] text-muted">
       <ol className="flex flex-wrap items-center gap-1.5">
         <li>
           <Link href="/" className="hover:text-foreground">
@@ -85,7 +85,7 @@ export function Panel({ title, description, children, className, id }: { title: 
 /** Text with paragraphs and line breaks preserved. */
 export function Prose({ text, className }: { text: string; className?: string }) {
   return (
-    <div className={cn('grid gap-4 text-[15px] leading-[1.9] text-foreground/90', className)}>
+    <div className={cn('grid gap-4 text-[16px] leading-[1.9] text-foreground/90', className)}>
       {text
         .split(/\n{2,}/)
         .map((p) => p.trim())
@@ -134,7 +134,7 @@ export function BookingCard({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        'inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[15px] font-medium transition-[transform,background-color] hover:-translate-y-0.5',
+        'inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-[16px] font-medium transition-[transform,background-color] hover:-translate-y-0.5',
         soldOut ? 'bg-ink text-ink-foreground hover:bg-ink-hover' : 'bg-primary text-primary-foreground shadow-primary hover:bg-primary-hover',
       )}
     >
@@ -207,7 +207,7 @@ export function BookingCard({
         <div className="glass flex items-center gap-3 rounded-full p-2 ps-5">
           <div className="min-w-0 flex-1">
             {discounted && (
-              <s className="block text-[11px] leading-none text-subtle num">
+              <s className="block text-[12px] leading-none text-subtle num">
                 <span className="sr-only">{t.oldPrice}: </span>
                 {money(item.price, item.currencyCode, locale)}
               </s>

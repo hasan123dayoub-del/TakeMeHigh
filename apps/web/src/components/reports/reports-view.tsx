@@ -141,11 +141,11 @@ function DateFilters({ f, set }: { f: Record<string, string | undefined>; set: (
   const t = useMessages(m);
   return (
     <>
-      <label className="inline-flex items-center gap-2 text-[13px] text-subtle">
+      <label className="inline-flex items-center gap-2 text-[14px] text-subtle">
         {t.from}
         <Input type="date" dir="ltr" className="h-10 w-[150px] rounded-full px-3.5" value={f.from ?? ''} max={f.to} onChange={(e) => set({ from: e.target.value || undefined })} aria-label={t.from} />
       </label>
-      <label className="inline-flex items-center gap-2 text-[13px] text-subtle">
+      <label className="inline-flex items-center gap-2 text-[14px] text-subtle">
         {t.to}
         <Input type="date" dir="ltr" className="h-10 w-[150px] rounded-full px-3.5" value={f.to ?? ''} min={f.from} onChange={(e) => set({ to: e.target.value || undefined })} aria-label={t.to} />
       </label>
@@ -291,7 +291,7 @@ function Reports() {
       </Tabs>
 
       <section aria-label={t.shortcuts} className="flex flex-col gap-3">
-        <h2 className="heading-display text-[15px]">{t.shortcuts}</h2>
+        <h2 className="heading-display text-[16px]">{t.shortcuts}</h2>
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           {shortcuts
             .filter((s) => s.show)

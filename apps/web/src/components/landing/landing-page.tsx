@@ -1,5 +1,5 @@
 import { getLocale, getMessages } from '@/lib/i18n/server';
-import { AchievementsGrid } from './achievements';
+import { AboutSection } from './about-section';
 import { Catalog, type DestinationOption } from './catalog';
 import { Hero } from './hero';
 import { landingMessages } from './messages';
@@ -65,22 +65,7 @@ export async function LandingPage() {
 
       <DesignCta t={t} />
 
-      {site.achievements.length > 0 && (
-        <section id="achievements" aria-labelledby="achievements-title" className="scroll-mt-24 px-3 pt-24 sm:px-6">
-          <div className="mx-auto max-w-[1280px]">
-            <Reveal>
-              <SectionHeading
-                id="achievements-title"
-                eyebrow={t.achievementsEyebrow}
-                titleA={t.achievementsTitleA}
-                titleB={t.achievementsTitleB}
-                body={t.achievementsBody}
-              />
-            </Reveal>
-            <AchievementsGrid items={site.achievements} />
-          </div>
-        </section>
-      )}
+      <AboutSection site={site} t={t} />
 
       <BranchesSection branches={site.branches} t={t} locale={locale} />
       <PoliciesSection policies={site.policies} t={t} />

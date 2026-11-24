@@ -27,7 +27,7 @@ export async function ProgramDetail({ id }: { id: string }) {
       <Breadcrumbs t={t} current={program.title} section={{ href: '/#trips', label: t.navTrips }} />
       <div className="mt-4">
         <DetailHero item={program} t={t} locale={locale}>
-          <RouteLine cities={routeOf(program, locale)} className="mt-3 text-[15px] text-white/90 [&_.text-foreground]:text-white [&_.text-primary]:text-white [&_.text-subtle]:text-white/70" />
+          <RouteLine cities={routeOf(program, locale)} className="mt-3 text-[16px] text-white/90 [&_.text-foreground]:text-white [&_.text-primary]:text-white [&_.text-subtle]:text-white/70" />
           <p className="mt-2 inline-flex items-center gap-2 text-sm text-white/85">
             <CalendarDays className="size-4" aria-hidden />
             <span className="num">{fRange(program.startsAt, program.endsAt, locale)}</span>
@@ -88,7 +88,7 @@ export async function ProgramDetail({ id }: { id: string }) {
                       <p className="mt-1 font-medium">{leg.title}</p>
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
                         <RouteLine cities={[cityName(leg.originCity, locale), cityName(leg.destinationCity, locale)]} />
-                        <span className="inline-flex items-center gap-1.5 text-[13px] text-muted">
+                        <span className="inline-flex items-center gap-1.5 text-[14px] text-muted">
                           <CalendarDays className="size-3.5 text-primary" aria-hidden />
                           <span className="num">{fRange(leg.startsAt, leg.endsAt, locale)}</span>
                         </span>

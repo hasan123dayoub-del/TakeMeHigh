@@ -122,7 +122,7 @@ export function LegsChain({ legs, onChange, locked }: { legs: LegTrip[]; onChang
                     </div>
                   )}
                 </div>
-                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-[13px]">
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 text-[14px]">
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="size-3.5 text-subtle" aria-hidden />
                     <span className="font-medium">{name(leg.originCity)}</span>
@@ -204,16 +204,16 @@ export function TripPicker({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="num ltr-nums text-[11px] font-medium text-muted">{tr.code}</span>
+                  <span className="num ltr-nums text-[12px] font-medium text-muted">{tr.code}</span>
                   <StatusBadge kind="product" status={tr.status} size="sm" />
                   {continues && (
-                    <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success/14 px-2 text-[11px] font-medium text-[color-mix(in_srgb,var(--success)_75%,var(--text))]">
+                    <span className="inline-flex h-5 items-center gap-1 rounded-full bg-success/14 px-2 text-[12px] font-medium text-[color-mix(in_srgb,var(--success)_75%,var(--text))]">
                       <Check className="size-3" aria-hidden /> {t.continues}
                     </span>
                   )}
-                  {!sameCurrency && <span className="text-[11px] font-medium text-warning">{t.otherCurrency}</span>}
+                  {!sameCurrency && <span className="text-[12px] font-medium text-warning">{t.otherCurrency}</span>}
                 </div>
-                <div className="mt-1 truncate text-[13px] font-medium">{tr.title}</div>
+                <div className="mt-1 truncate text-[14px] font-medium">{tr.title}</div>
               </div>
               <Button type="button" size="xs" variant={continues ? 'primary' : 'secondary'} disabled={!sameCurrency} onClick={() => onAdd(tr)} aria-label={`${t.add_} ${tr.code}`}>
                 <Plus /> {t.add_}

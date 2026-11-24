@@ -260,7 +260,7 @@ function Matrix({ roles, catalogue, canManage }: { roles: Role[]; catalogue: Cat
                   <th key={r.id} scope="col" className={cn('min-w-[150px] border-b border-border px-3 py-3 text-center align-bottom font-normal', drafts[r.id] && dirty.includes(r) && 'bg-warning/8')}>
                     <div className="flex flex-col items-center gap-1.5">
                       <span className="font-medium text-foreground">{roleName(r)}</span>
-                      <span className="font-mono text-[10px] text-subtle" dir="ltr">
+                      <span className="font-mono text-[11px] text-subtle" dir="ltr">
                         {r.code}
                       </span>
                       <div className="flex flex-wrap items-center justify-center gap-1">
@@ -275,7 +275,7 @@ function Matrix({ roles, catalogue, canManage }: { roles: Role[]; catalogue: Cat
                         <Users className="size-3" aria-hidden />
                         <span className="num">{t.users.replace('{n}', String(r.usersCount))}</span>
                       </span>
-                      <span className="num text-[11px] text-subtle">{t.count.replace('{n}', String(current(r).size)).replace('{total}', String(catalogue.length))}</span>
+                      <span className="num text-[12px] text-subtle">{t.count.replace('{n}', String(current(r).size)).replace('{total}', String(catalogue.length))}</span>
                       {canManage && !r.isSystem && (
                         <div className="flex gap-0.5">
                           <Button size="icon-sm" variant="ghost" title={t.rename} aria-label={`${t.rename}: ${roleName(r)}`} onClick={() => setRenaming(r)}>
@@ -317,14 +317,14 @@ function Matrix({ roles, catalogue, canManage }: { roles: Role[]; catalogue: Cat
                           {editable(r) ? (
                             <button
                               type="button"
-                              className="num rounded-full px-2 py-0.5 text-[11px] text-muted hover:bg-surface hover:text-foreground"
+                              className="num rounded-full px-2 py-0.5 text-[12px] text-muted hover:bg-surface hover:text-foreground"
                               onClick={() => toggleModule(r, g.items)}
                               aria-label={`${PERMISSION_MODULES[g.module][locale]} — ${roleName(r)}`}
                             >
                               {on}/{g.items.length}
                             </button>
                           ) : (
-                            <span className="num text-[11px] text-subtle">
+                            <span className="num text-[12px] text-subtle">
                               {on}/{g.items.length}
                             </span>
                           )}
@@ -337,7 +337,7 @@ function Matrix({ roles, catalogue, canManage }: { roles: Role[]; catalogue: Cat
                       <th scope="row" className="sticky start-0 z-10 border-b border-border/60 bg-surface px-4 py-2.5 text-start font-normal">
                         <div className="flex flex-col">
                           <span>{locale === 'en' ? p.en : p.ar}</span>
-                          <span className="self-start font-mono text-[10px] text-subtle" dir="ltr">
+                          <span className="self-start font-mono text-[11px] text-subtle" dir="ltr">
                             {p.code}
                           </span>
                         </div>

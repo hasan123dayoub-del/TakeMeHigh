@@ -84,9 +84,9 @@ function CommandBody({ items, onDone }: { items: NavItem[]; onDone: () => void }
           aria-expanded
           aria-controls="command-results"
           aria-activedescendant={results[current] ? `cmd-${results[current].href}` : undefined}
-          className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-subtle"
+          className="h-14 flex-1 bg-transparent text-[16px] outline-none placeholder:text-subtle"
         />
-        <kbd className="rounded-md border border-border px-1.5 py-0.5 text-[11px] text-muted">
+        <kbd className="rounded-md border border-border px-1.5 py-0.5 text-[12px] text-muted">
           Esc
         </kbd>
       </div>

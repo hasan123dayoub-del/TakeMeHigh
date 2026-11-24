@@ -294,14 +294,14 @@ function LineItem({
       <span aria-hidden className="absolute start-5 top-0 bottom-0 w-px -translate-x-1/2 bg-border rtl:translate-x-1/2" />
       <div className="relative z-10 flex flex-col items-center pt-3">
         <ServiceIcon kind={l.service.kind} mode={l.transportMode} className="bg-surface-raised shadow-card" />
-        <span className="num mt-1 text-[10px] font-medium text-subtle">{l.sequenceNo}</span>
+        <span className="num mt-1 text-[11px] font-medium text-subtle">{l.sequenceNo}</span>
       </div>
       <div className="min-w-0 flex-1 rounded-tile border border-border bg-surface-raised p-4 shadow-card transition-shadow group-hover:shadow-pop">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="eyebrow">{kindLabel}</div>
             <div className="mt-1 font-medium leading-snug">{l.item.name}</div>
-            <div className="text-[13px] text-muted">{l.item.company.name}</div>
+            <div className="text-[14px] text-muted">{l.item.company.name}</div>
           </div>
           <div className="flex items-center gap-1.5">
             {flags.map((x) => (
@@ -327,7 +327,7 @@ function LineItem({
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[14px]">
           <span className="inline-flex items-center gap-1.5">
             <MapPin className="size-3.5 text-subtle" aria-hidden />
             {transport ? <RouteText from={name(l.fromCity)} to={name(l.toCity)} /> : name(l.toCity)}
@@ -344,7 +344,7 @@ function LineItem({
         )}
 
         {showMoney && l.sellingPrice !== undefined && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-border pt-3 text-[13px]">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-dashed border-border pt-3 text-[14px]">
             <span className="text-muted">
               {t.unitCost} <span className="num text-foreground">{f.money(l.unitCost, currency)}</span>
               {' × '}

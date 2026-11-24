@@ -33,7 +33,7 @@ export async function TripDetail({ id }: { id: string }) {
       <Breadcrumbs t={t} current={trip.title} section={{ href: '/#trips', label: t.navTrips }} />
       <div className="mt-4">
         <DetailHero item={trip} t={t} locale={locale}>
-          <RouteLine cities={routeOf(trip, locale)} className="mt-3 text-[15px] text-white/90 [&_.text-foreground]:text-white [&_.text-primary]:text-white [&_.text-subtle]:text-white/70" />
+          <RouteLine cities={routeOf(trip, locale)} className="mt-3 text-[16px] text-white/90 [&_.text-foreground]:text-white [&_.text-primary]:text-white [&_.text-subtle]:text-white/70" />
           <p className="mt-2 inline-flex items-center gap-2 text-sm text-white/85">
             <CalendarDays className="size-4" aria-hidden />
             <span className="num">{fRange(trip.startsAt, trip.endsAt, locale)}</span>
@@ -84,7 +84,7 @@ export async function TripDetail({ id }: { id: string }) {
                           {line.transportMode ? ` · ${LABELS.transportMode[line.transportMode][locale]}` : ''}
                         </p>
                         <p className="mt-1 font-medium">{line.item.name}</p>
-                        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
+                        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-muted">
                           <span className="inline-flex items-center gap-1">
                             {line.item.company.name}
                             {line.item.company.rating ? (

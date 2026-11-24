@@ -204,7 +204,7 @@ function ProgramDetailBody({ program: p }: { program: ProgramDetailData }) {
             <span className="text-xs text-muted">{t.available}</span>
           </div>
           <SeatBar confirmed={p.confirmedSeats} max={p.maxPassengers} min={p.minPassengers} />
-          {belowMin && live && <div className="mt-1.5 text-[11px] text-warning">{fmt(t.belowMin, { min: p.minPassengers })}</div>}
+          {belowMin && live && <div className="mt-1.5 text-[12px] text-warning">{fmt(t.belowMin, { min: p.minPassengers })}</div>}
         </Kpi>
         <Kpi icon={CalendarClock} label={t.deadline}>
           <div className="num text-base font-medium">{f.date(p.registrationDeadline, 'dateTime')}</div>
@@ -227,7 +227,7 @@ function ProgramDetailBody({ program: p }: { program: ProgramDetailData }) {
           {showPassengers && <TabsTrigger value="passengers">{t.passengers}</TabsTrigger>}
           <TabsTrigger value="decisions">
             {t.decisions}
-            {p.decisions.length > 0 && <span className="num text-[11px] opacity-70">({p.decisions.length})</span>}
+            {p.decisions.length > 0 && <span className="num text-[12px] opacity-70">({p.decisions.length})</span>}
           </TabsTrigger>
         </TabsList>
 
@@ -287,7 +287,7 @@ function ProgramDetailBody({ program: p }: { program: ProgramDetailData }) {
                 {p.terms && (
                   <div>
                     <div className="mb-1.5 text-xs text-muted">{t.terms_}</div>
-                    <p className="text-[13px] leading-relaxed whitespace-pre-line">{p.terms}</p>
+                    <p className="text-[14px] leading-relaxed whitespace-pre-line">{p.terms}</p>
                   </div>
                 )}
               </CardContent>
@@ -305,7 +305,7 @@ function ProgramDetailBody({ program: p }: { program: ProgramDetailData }) {
                 {first && first.pickupPoints.length ? (
                   <ul className="flex flex-col divide-y divide-border">
                     {first.pickupPoints.map((pp) => (
-                      <li key={pp.id} className="flex items-center justify-between gap-3 py-2.5 text-[13px]">
+                      <li key={pp.id} className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
                         <span className="inline-flex items-center gap-2">
                           <MapPin className="size-3.5 text-subtle" aria-hidden />
                           <span className="font-medium">{name(pp.city)}</span>
@@ -318,7 +318,7 @@ function ProgramDetailBody({ program: p }: { program: ProgramDetailData }) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-[13px] text-muted">{fmt(t.noPickups, { city: first ? name(first.originCity) : '—' })}</p>
+                  <p className="text-[14px] text-muted">{fmt(t.noPickups, { city: first ? name(first.originCity) : '—' })}</p>
                 )}
               </CardContent>
             </Card>
@@ -347,11 +347,11 @@ function ProgramDetailBody({ program: p }: { program: ProgramDetailData }) {
                         <span className="num text-xs text-muted">{f.date(d.createdAt, 'dateTime')}</span>
                         <span className="text-xs text-muted">{fmt(t.decisionBy, { name: d.decidedBy.fullName })}</span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-muted">
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-muted">
                         <span className="num">{fmt(t.passengersAt, { n: d.passengersAtTime })}</span>
                         {d.newDeadline && <span className="num">{fmt(t.deadlineChange, { from: f.date(d.previousDeadline, 'short'), to: f.date(d.newDeadline, 'short') })}</span>}
                       </div>
-                      {d.note && <p className="mt-1.5 text-[13px]">{d.note}</p>}
+                      {d.note && <p className="mt-1.5 text-[14px]">{d.note}</p>}
                     </div>
                   </li>
                 ))}

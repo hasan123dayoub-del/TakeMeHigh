@@ -33,7 +33,7 @@ export function SiteHeader({ name, logoUrl, whatsappHref }: Props) {
   const links = [
     { href: '/#trips', label: t.navTrips },
     { href: '/#offers', label: t.navOffers },
-    { href: '/#achievements', label: t.navAchievements },
+    { href: '/#about', label: t.navAchievements },
     { href: '/#branches', label: t.navBranches },
     { href: '/#policies', label: t.navPolicies },
   ];
@@ -58,7 +58,7 @@ export function SiteHeader({ name, logoUrl, whatsappHref }: Props) {
         >
           <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-full pe-2 ps-0.5" aria-label={`${name} — ${t.home}`}>
             <BrandMark name={name} logoUrl={logoUrl} />
-            <span className="truncate font-display text-[15px] font-medium sm:text-base">{name}</span>
+            <span className="truncate font-display text-[16px] font-medium sm:text-base">{name}</span>
           </Link>
 
           <nav aria-label={t.mainNav} className="mx-auto hidden lg:block">
@@ -67,7 +67,7 @@ export function SiteHeader({ name, logoUrl, whatsappHref }: Props) {
                 <li key={l.href}>
                   <Link
                     href={l.href}
-                    className="inline-flex h-9 items-center rounded-full px-3.5 text-[13px] font-medium text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
+                    className="inline-flex h-9 items-center rounded-full px-3.5 text-[14px] font-medium text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
                   >
                     {l.label}
                   </Link>
@@ -128,7 +128,7 @@ export function SiteHeader({ name, logoUrl, whatsappHref }: Props) {
                           <Link
                             href={l.href}
                             onClick={() => setOpen(false)}
-                            className="flex h-12 items-center rounded-tile px-4 text-[15px] font-medium transition-colors hover:bg-surface"
+                            className="flex h-12 items-center rounded-tile px-4 text-[16px] font-medium transition-colors hover:bg-surface"
                           >
                             {l.label}
                           </Link>

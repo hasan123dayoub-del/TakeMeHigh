@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 export const buttonVariants = cva(
   [
     'relative inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap font-medium select-none',
-    'transition-[background-color,color,border-color,box-shadow,transform] duration-200 ease-out-soft',
+    'transition-[background-color,color,border-color,box-shadow,transform,translate,scale] duration-200 ease-out-soft',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
     'disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
     '[&_svg]:pointer-events-none [&_svg]:shrink-0',
@@ -32,9 +32,9 @@ export const buttonVariants = cva(
       },
       size: {
         xs: 'h-7 px-2.5 text-xs [&_svg]:size-3.5',
-        sm: 'h-8 px-3.5 text-[13px] [&_svg]:size-3.5',
+        sm: 'h-8 px-3.5 text-[14px] [&_svg]:size-3.5',
         md: 'h-10 px-5 text-sm [&_svg]:size-4',
-        lg: 'h-12 px-6 text-[15px] [&_svg]:size-[18px]',
+        lg: 'h-12 px-6 text-[16px] [&_svg]:size-[18px]',
         icon: 'size-10 [&_svg]:size-4',
         'icon-sm': 'size-8 [&_svg]:size-4',
       },

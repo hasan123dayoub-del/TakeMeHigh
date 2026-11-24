@@ -241,7 +241,7 @@ function OfferForm({ offer }: { offer: Offer | null }) {
                   </span>
                   <span className="min-w-0">
                     <span className="block font-medium">{title}</span>
-                    <span className="mt-1 block text-[13px] leading-relaxed text-muted">{body}</span>
+                    <span className="mt-1 block text-[14px] leading-relaxed text-muted">{body}</span>
                   </span>
                   {on && (
                     <span className="absolute end-4 top-4 grid size-5 place-items-center rounded-full bg-ink text-ink-foreground">
@@ -360,7 +360,7 @@ function OfferForm({ offer }: { offer: Offer | null }) {
                       <dd className="num font-medium">− {f.money(fromCents(discCents), currency)}</dd>
                     </div>
                   </dl>
-                  <p className="mt-3 text-[11px] opacity-80">{t.previewHint}</p>
+                  <p className="mt-3 text-[12px] opacity-80">{t.previewHint}</p>
                 </>
               ) : (
                 <>
@@ -380,7 +380,7 @@ function OfferForm({ offer }: { offer: Offer | null }) {
           )}
 
           <Card className="p-5">
-            <h3 className="eyebrow text-[11px]">{t.summary}</h3>
+            <h3 className="eyebrow text-[12px]">{t.summary}</h3>
             <div className="mt-4 flex flex-col gap-2.5">
               {kind === 'BUNDLE' ? (
                 <>
@@ -409,7 +409,7 @@ function OfferForm({ offer }: { offer: Offer | null }) {
 
 function Check2({ ok, label }: { ok: boolean; label: ReactNode }) {
   return (
-    <div className={cn('flex items-center gap-2 text-[13px] font-medium', ok ? 'text-[color-mix(in_srgb,var(--success)_75%,var(--text))]' : 'text-danger')}>
+    <div className={cn('flex items-center gap-2 text-[14px] font-medium', ok ? 'text-[color-mix(in_srgb,var(--success)_75%,var(--text))]' : 'text-danger')}>
       <span className={cn('grid size-5 place-items-center rounded-full', ok ? 'bg-success/14' : 'bg-danger/12')}>{ok ? <Check className="size-3" aria-hidden /> : <X className="size-3" aria-hidden />}</span>
       {label}
     </div>

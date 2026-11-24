@@ -202,7 +202,7 @@ function CountriesTable({ canManage, onEdit }: { canManage: boolean; onEdit: (c:
 
   const columns = useMemo<ResourceColumn<Country>[]>(
     () => [
-      { id: 'iso', header: t.iso, sortKey: 'isoCode', cell: (x) => <span className="font-mono text-[13px]">{x.isoCode}</span> },
+      { id: 'iso', header: t.iso, sortKey: 'isoCode', cell: (x) => <span className="font-mono text-[14px]">{x.isoCode}</span> },
       { id: 'nameAr', header: t.nameAr, sortKey: 'nameAr', cell: (x) => <span className="font-medium">{x.nameAr}</span> },
       { id: 'nameEn', header: t.nameEn, sortKey: 'nameEn', cell: (x) => <span dir="ltr">{x.nameEn}</span> },
       { id: 'cities', header: t.citiesCount, align: 'end', cell: (x) => <span className="num">{x._count?.cities ?? 0}</span> },
@@ -298,7 +298,7 @@ function CitiesTable({ canManage, onEdit }: { canManage: boolean; onEdit: (c: Ci
         header: t.country,
         cell: (x) => (
           <span className="inline-flex items-center gap-1.5">
-            <span className="font-mono text-[11px] text-subtle">{x.country?.isoCode}</span>
+            <span className="font-mono text-[12px] text-subtle">{x.country?.isoCode}</span>
             {name(x.country)}
             {x.country?.isActive === false && (
               <Badge size="sm" tone="neutral">

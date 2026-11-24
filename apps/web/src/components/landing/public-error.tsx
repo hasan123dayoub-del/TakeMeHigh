@@ -18,7 +18,7 @@ export function PublicError({ reset }: { reset: () => void }) {
         <h1 className="heading-display mt-6 text-[26px] leading-tight">
           <strong className="font-medium">{t.errorTitle}</strong>
         </h1>
-        <p className="mt-2 max-w-sm text-[15px] text-muted">{t.errorBody}</p>
+        <p className="mt-2 max-w-sm text-[16px] text-muted">{t.errorBody}</p>
         <button
           type="button"
           onClick={() =>

@@ -53,7 +53,7 @@ export function TripsView() {
 
   const columns = useMemo<ResourceColumn<TripListItem>[]>(
     () => [
-      { id: 'code', header: w.code, cell: (x) => <span className="num ltr-nums text-[13px] font-medium whitespace-nowrap">{x.code}</span> },
+      { id: 'code', header: w.code, cell: (x) => <span className="num ltr-nums text-[14px] font-medium whitespace-nowrap">{x.code}</span> },
       {
         id: 'title',
         header: w.title,
@@ -198,7 +198,7 @@ export function TripsView() {
               aria-pressed={fl.costChanged === 'true'}
               onClick={() => set({ costChanged: fl.costChanged === 'true' ? undefined : 'true' })}
               className={cn(
-                'inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors',
+                'inline-flex h-10 items-center gap-1.5 rounded-full border px-3.5 text-[14px] font-medium transition-colors',
                 fl.costChanged === 'true'
                   ? 'border-warning/40 bg-warning/14 text-[color-mix(in_srgb,var(--warning)_75%,var(--text))]'
                   : 'border-border bg-surface-raised text-muted hover:text-foreground',
@@ -229,14 +229,14 @@ export function TripsView() {
 
 function DateFilter({ label, value, onChange }: { label: string; value: string | undefined; onChange: (v: string | undefined) => void }) {
   return (
-    <label className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface-raised ps-3.5 pe-2 text-[13px] shadow-card">
+    <label className="inline-flex h-10 items-center gap-2 rounded-full border border-border bg-surface-raised ps-3.5 pe-2 text-[14px] shadow-card">
       <span className="text-subtle">{label}:</span>
       <input
         type="date"
         dir="ltr"
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="num bg-transparent text-[13px] outline-none"
+        className="num bg-transparent text-[14px] outline-none"
         aria-label={label}
       />
     </label>

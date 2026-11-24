@@ -178,7 +178,7 @@ function TripDetailBody({ trip }: { trip: TripFull }) {
       {/* key figures */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Figure icon={CalendarRange} label={w.dates}>
-          <div className="num text-[15px] font-medium">{f.date(trip.startsAt, 'dateTime')}</div>
+          <div className="num text-[16px] font-medium">{f.date(trip.startsAt, 'dateTime')}</div>
           <div className="num text-xs text-muted">
             {f.date(trip.endsAt, 'dateTime')} · {fmt(t.nights, { n: days })}
           </div>
@@ -188,7 +188,7 @@ function TripDetailBody({ trip }: { trip: TripFull }) {
         </Figure>
         <Figure icon={Users} label={w.seats}>
           <SeatsBar confirmed={trip.confirmedSeats} max={trip.maxPassengers} />
-          <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-muted">
+          <div className="mt-1.5 flex flex-wrap gap-x-3 text-[12px] text-muted">
             <span>{fmt(t.min, { n: trip.minPassengers })}</span>
             {trip.passengers.pending > 0 && <span>{fmt(t.pending, { n: trip.passengers.pending })}</span>}
             {trip.passengers.waitlist > 0 && <span>{fmt(t.waitlist, { n: trip.passengers.waitlist })}</span>}

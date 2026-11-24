@@ -3,7 +3,7 @@ import { defineMessages } from './shared';
 /** Words used across many screens. Module-specific text lives next to each module. */
 export const common = defineMessages({
   ar: {
-    appName: 'TakeMeHigh',
+    appName: 'Take Me High',
     appTagline: 'نظام تشغيل مكتب السياحة والسفر',
     save: 'حفظ',
     saving: 'جارٍ الحفظ…',
@@ -55,7 +55,7 @@ export const common = defineMessages({
     networkError: 'تعذّر الوصول إلى الخادم. تحقّق من الاتصال وحاول مجدداً.',
   },
   en: {
-    appName: 'TakeMeHigh',
+    appName: 'Take Me High',
     appTagline: 'Travel agency operations system',
     save: 'Save',
     saving: 'Saving…',

@@ -369,7 +369,7 @@ function GuideHome({ data }: { data: DashboardData }) {
   return (
     <div className="flex flex-col gap-6">
       <Greeting lead={t.guideLead} />
-      <h2 className="heading-display text-[15px]">{t.myTrips}</h2>
+      <h2 className="heading-display text-[16px]">{t.myTrips}</h2>
       {!trips.length ? (
         <Card>
           <EmptyState icon={CalendarClock} title={t.noTrips} description={t.noTripsBody} />

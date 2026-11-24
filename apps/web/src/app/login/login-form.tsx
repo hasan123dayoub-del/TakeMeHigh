@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,6 @@ import { ApiError, errorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { defineMessages, fmt, useMessages } from '@/lib/i18n';
 import { common } from '@/lib/i18n/common';
-import { cn } from '@/lib/utils';
 
 const m = defineMessages({
   ar: {
@@ -34,14 +33,6 @@ const m = defineMessages({
     welcome: 'أهلاً {name}',
     signedInTo: '{role} · {branch}',
     allBranches: 'كل الفروع',
-    demo: 'حسابات تجريبية',
-    demoHint: 'اختر حساباً لتعبئة بياناته ثم سجّل الدخول.',
-    admin: 'مدير المكتب (Admin)',
-    managerDamascus: 'مدير فرع دمشق',
-    employeeDamascus: 'موظف دمشق',
-    guideDamascus: 'دليل سياحي — دمشق',
-    managerAleppo: 'مديرة فرع حلب',
-    employeeAleppo: 'موظف حلب',
   },
   en: {
     email: 'Email',
@@ -60,27 +51,8 @@ const m = defineMessages({
     welcome: 'Welcome, {name}',
     signedInTo: '{role} · {branch}',
     allBranches: 'All branches',
-    demo: 'Demo accounts',
-    demoHint: 'Pick an account to fill in its credentials, then sign in.',
-    admin: 'Office admin',
-    managerDamascus: 'Damascus branch manager',
-    employeeDamascus: 'Damascus employee',
-    guideDamascus: 'Tour guide — Damascus',
-    managerAleppo: 'Aleppo branch manager',
-    employeeAleppo: 'Aleppo employee',
   },
 });
-
-/** Seeded demo accounts (apps/api/prisma/seed.ts). Local demo only. */
-const DEMO_PASSWORD = 'TakeMeHigh@2026';
-const DEMO_ACCOUNTS = [
-  { key: 'admin', email: 'admin@takemehigh.local' },
-  { key: 'managerDamascus', email: 'manager.damascus@takemehigh.local' },
-  { key: 'employeeDamascus', email: 'employee.damascus@takemehigh.local' },
-  { key: 'guideDamascus', email: 'guide.damascus@takemehigh.local' },
-  { key: 'managerAleppo', email: 'manager.aleppo@takemehigh.local' },
-  { key: 'employeeAleppo', email: 'employee.aleppo@takemehigh.local' },
-] as const;
 
 /** Only same-origin dashboard paths are allowed as post-login destinations (no open redirect). */
 function safeNext() {
@@ -109,11 +81,8 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
-    setValue,
-    control,
     formState: { errors, isSubmitting },
   } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' }, mode: 'onTouched' });
-  const email = useWatch({ control, name: 'email' });
 
   const onSubmit = handleSubmit(async (values) => {
     setFormError(null);
@@ -132,12 +101,6 @@ export function LoginForm() {
     }
   });
 
-  const fillDemo = (demoEmail: string) => {
-    setFormError(null);
-    setValue('email', demoEmail, { shouldValidate: true, shouldDirty: true });
-    setValue('password', DEMO_PASSWORD, { shouldValidate: true, shouldDirty: true });
-  };
-
   return (
     <div className="mt-8">
       <form onSubmit={onSubmit} noValidate className="grid gap-5" aria-describedby={formError ? 'login-error' : undefined}>
@@ -145,7 +108,7 @@ export function LoginForm() {
           <div
             id="login-error"
             role="alert"
-            className="flex items-start gap-2.5 rounded-tile border border-danger/25 bg-danger/8 px-3.5 py-3 text-[13px] text-[color-mix(in_srgb,var(--danger)_80%,var(--text))] animate-fade-in"
+            className="flex items-start gap-2.5 rounded-tile border border-danger/25 bg-danger/8 px-3.5 py-3 text-[14px] text-[color-mix(in_srgb,var(--danger)_80%,var(--text))] animate-fade-in"
           >
             <AlertCircle className="mt-px size-4 shrink-0" aria-hidden />
             <span>{formError}</span>
@@ -183,35 +146,6 @@ export function LoginForm() {
           {!isSubmitting && <ArrowRight className="rtl-flip" />}
         </Button>
       </form>
-
-      <div className="mt-8">
-        <div className="flex items-center gap-3">
-          <span className="h-px flex-1 bg-border" />
-          <span className="eyebrow">{t.demo}</span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-        <p className="mt-3 text-center text-xs text-muted">{t.demoHint}</p>
-        <div className="mt-3 flex flex-wrap justify-center gap-1.5" role="group" aria-label={t.demo}>
-          {DEMO_ACCOUNTS.map((a) => {
-            const selected = email === a.email;
-            return (
-              <button
-                key={a.key}
-                type="button"
-                onClick={() => fillDemo(a.email)}
-                aria-pressed={selected}
-                aria-label={`${t[a.key]} (${a.email})`}
-                className={cn(
-                  'h-8 rounded-full border px-3.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-                  selected ? 'border-ink bg-ink text-ink-foreground' : 'border-border bg-surface-raised text-muted hover:border-border-strong hover:text-foreground',
-                )}
-              >
-                {t[a.key]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

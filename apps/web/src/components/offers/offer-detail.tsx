@@ -135,7 +135,7 @@ function OfferBody({ offer: o }: { offer: Offer }) {
                 </Field>
               )}
             </dl>
-            {o.description && <p className="mt-4 border-t border-border pt-4 text-[13px] leading-relaxed whitespace-pre-line text-muted">{o.description}</p>}
+            {o.description && <p className="mt-4 border-t border-border pt-4 text-[14px] leading-relaxed whitespace-pre-line text-muted">{o.description}</p>}
           </Card>
           <Callout tone="info" title={t.ofr03Title}>
             {t.ofr03Body}
@@ -160,7 +160,7 @@ function OfferBody({ offer: o }: { offer: Offer }) {
                       <li key={l.id} className="flex flex-wrap items-center gap-4 rounded-[16px] border border-border bg-surface-raised p-3.5 shadow-card">
                         <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
                           <Icon className="size-5" aria-hidden />
-                          <span className="num absolute -end-1 -top-1 grid size-5 place-items-center rounded-full bg-ink text-[10px] font-semibold text-ink-foreground">{i + 1}</span>
+                          <span className="num absolute -end-1 -top-1 grid size-5 place-items-center rounded-full bg-ink text-[11px] font-semibold text-ink-foreground">{i + 1}</span>
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -169,14 +169,14 @@ function OfferBody({ offer: o }: { offer: Offer }) {
                             <span>· {l.item.company.name}</span>
                             {l.item.toCity && <span>· {l.item.toCity.nameAr}</span>}
                           </div>
-                          <div className="mt-0.5 text-[13px] font-medium">{l.item.name}</div>
+                          <div className="mt-0.5 text-[14px] font-medium">{l.item.name}</div>
                         </div>
-                        <div className="num text-[13px] text-muted">× {l.quantity}</div>
+                        <div className="num text-[14px] text-muted">× {l.quantity}</div>
                         {l.sellingPrice !== undefined && o.currencyCode && (
                           <div className="min-w-[120px] text-end">
-                            <div className="num text-[13px] font-semibold">{f.money(l.sellingPrice, o.currencyCode)}</div>
+                            <div className="num text-[14px] font-semibold">{f.money(l.sellingPrice, o.currencyCode)}</div>
                             {l.costSnapshot !== undefined && (
-                              <div className="num text-[11px] text-muted">
+                              <div className="num text-[12px] text-muted">
                                 {t.lineCost} {f.money(l.costSnapshot, o.currencyCode)}
                                 {l.profitMode && ` · ${l.profitMode === 'PERCENT' ? `${Number(l.profitValue)}%` : f.money(l.profitValue, o.currencyCode)}`}
                               </div>
@@ -188,7 +188,7 @@ function OfferBody({ offer: o }: { offer: Offer }) {
                   })}
                 </ul>
                 {grossCents !== null && o.currencyCode && (
-                  <dl className="mt-4 ms-auto flex max-w-xs flex-col gap-2 border-t border-border pt-4 text-[13px]">
+                  <dl className="mt-4 ms-auto flex max-w-xs flex-col gap-2 border-t border-border pt-4 text-[14px]">
                     <div className="flex justify-between gap-3">
                       <dt className="text-muted">{t.gross}</dt>
                       <dd className="num">{f.money(fromCents(grossCents), o.currencyCode)}</dd>
@@ -230,13 +230,13 @@ function OfferBody({ offer: o }: { offer: Offer }) {
                           </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="num ltr-nums text-[11px] font-medium text-muted">{r.code}</span>
+                              <span className="num ltr-nums text-[12px] font-medium text-muted">{r.code}</span>
                               <StatusBadge kind="product" status={r.status} size="sm" />
                             </div>
-                            <div className="mt-0.5 truncate text-[13px] font-medium">{r.title}</div>
+                            <div className="mt-0.5 truncate text-[14px] font-medium">{r.title}</div>
                           </div>
                           <div className="text-end">
-                            <div className="num text-[11px] text-muted line-through decoration-danger/60">{f.money(r.pricePerPerson, r.currencyCode)}</div>
+                            <div className="num text-[12px] text-muted line-through decoration-danger/60">{f.money(r.pricePerPerson, r.currencyCode)}</div>
                             <div className={cn('num text-sm font-semibold text-[color-mix(in_srgb,var(--success)_75%,var(--text))]')}>{f.money(fromCents(after), r.currencyCode)}</div>
                           </div>
                         </Link>
@@ -250,7 +250,7 @@ function OfferBody({ offer: o }: { offer: Offer }) {
           {o.terms && (
             <Card className="p-5">
               <div className="mb-1.5 text-xs text-muted">{t.terms}</div>
-              <p className="text-[13px] leading-relaxed whitespace-pre-line">{o.terms}</p>
+              <p className="text-[14px] leading-relaxed whitespace-pre-line">{o.terms}</p>
             </Card>
           )}
         </div>

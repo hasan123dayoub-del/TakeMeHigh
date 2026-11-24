@@ -97,12 +97,12 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
             <div aria-hidden className="absolute inset-0 bg-linear-to-t from-sky-950/85 via-sky-950/25 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-5 pb-16 text-white sm:p-7 sm:pb-20">
               {slide.kindLabel && (
-                <span className="inline-flex h-6 items-center rounded-full bg-white/18 px-2.5 text-[11px] font-medium tracking-[0.14em] uppercase backdrop-blur-md">
+                <span className="inline-flex h-6 items-center rounded-full bg-white/18 px-2.5 text-[12px] font-medium tracking-[0.14em] uppercase backdrop-blur-md">
                   {slide.kindLabel}
                 </span>
               )}
               <p className="mt-3 font-display text-[22px] leading-tight font-medium sm:text-[28px]">{slide.title}</p>
-              {slide.subtitle && <p className="mt-1.5 max-w-md text-sm leading-relaxed text-white/85 sm:text-[15px]">{slide.subtitle}</p>}
+              {slide.subtitle && <p className="mt-1.5 max-w-md text-sm leading-relaxed text-white/85 sm:text-[16px]">{slide.subtitle}</p>}
               {slide.href && (
                 <Link
                   href={slide.href}

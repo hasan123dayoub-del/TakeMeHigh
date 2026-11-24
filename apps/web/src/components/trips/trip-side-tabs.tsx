@@ -510,11 +510,11 @@ export function MediaTab({ trip, editable }: { trip: TripFull; editable: boolean
                         placeholder={t.caption}
                         aria-label={t.caption}
                         maxLength={160}
-                        className="h-9 text-[13px]"
+                        className="h-9 text-[14px]"
                         onChange={(e) => setImages((s) => s.map((x, j) => (j === i ? { ...x, caption: e.target.value } : x)))}
                       />
                     ) : (
-                      <p className="px-1 text-[13px] text-muted">{img.caption || '—'}</p>
+                      <p className="px-1 text-[14px] text-muted">{img.caption || '—'}</p>
                     )}
                   </div>
                 </li>
@@ -568,7 +568,7 @@ export function HistoryTab({ trip }: { trip: TripFull }) {
                       {t.by} {d.decidedBy.fullName}
                     </span>
                   </div>
-                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[13px] sm:grid-cols-3">
+                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-[14px] sm:grid-cols-3">
                     <div>
                       <dt className="text-xs text-muted">{t.passengersAt}</dt>
                       <dd className="num">{d.passengersAtTime}</dd>
@@ -584,7 +584,7 @@ export function HistoryTab({ trip }: { trip: TripFull }) {
                       </div>
                     )}
                   </dl>
-                  {d.note && <p className="mt-1.5 rounded-[10px] bg-surface px-3 py-2 text-[13px]">{d.note}</p>}
+                  {d.note && <p className="mt-1.5 rounded-[10px] bg-surface px-3 py-2 text-[14px]">{d.note}</p>}
                 </li>
               ))}
             </ol>

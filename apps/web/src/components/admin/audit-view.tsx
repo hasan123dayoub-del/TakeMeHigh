@@ -111,7 +111,7 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className="text-xs font-medium text-muted">{label}</span>
-      <pre dir="ltr" className="max-h-72 overflow-auto rounded-[12px] border border-border bg-surface p-3 text-start font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
+      <pre dir="ltr" className="max-h-72 overflow-auto rounded-[12px] border border-border bg-surface p-3 text-start font-mono text-[13px] leading-relaxed whitespace-pre-wrap break-all">
         {value === undefined ? '—' : JSON.stringify(value, null, 2)}
       </pre>
     </div>
@@ -126,7 +126,7 @@ export function AuditView() {
 
   const columns = useMemo<ResourceColumn<AuditEntry>[]>(
     () => [
-      { id: 'time', header: t.time, sortKey: 'createdAt', cell: (r) => <span className="num text-[13px] whitespace-nowrap">{f.date(r.createdAt, 'dateTime')}</span>, print: (r) => f.date(r.createdAt, 'dateTime') },
+      { id: 'time', header: t.time, sortKey: 'createdAt', cell: (r) => <span className="num text-[14px] whitespace-nowrap">{f.date(r.createdAt, 'dateTime')}</span>, print: (r) => f.date(r.createdAt, 'dateTime') },
       {
         id: 'user',
         header: t.user,
@@ -137,7 +137,7 @@ export function AuditView() {
         id: 'action',
         header: t.action,
         cell: (r) => (
-          <code dir="ltr" className="font-mono text-[12px] text-muted">
+          <code dir="ltr" className="font-mono text-[13px] text-muted">
             {r.action}
           </code>
         ),
@@ -153,7 +153,7 @@ export function AuditView() {
         ),
         print: (r) => r.entityType,
       },
-      { id: 'summary', header: t.summary, className: 'max-w-[420px]', cell: (r) => <span className="line-clamp-2 text-[13px]">{r.summary}</span>, print: (r) => r.summary },
+      { id: 'summary', header: t.summary, className: 'max-w-[420px]', cell: (r) => <span className="line-clamp-2 text-[14px]">{r.summary}</span>, print: (r) => r.summary },
     ],
     [t, f],
   );
@@ -174,7 +174,7 @@ export function AuditView() {
           <>
             <FilterSelect label={t.actionFilter} value={fl.action} onChange={(v) => set({ action: v })} options={ACTION_PREFIXES.map((p) => ({ value: p, label: `${p}*` }))} />
             <FilterSelect label={t.entityFilter} value={fl.entityType} onChange={(v) => set({ entityType: v })} options={ENTITY_TYPES.map((e) => ({ value: e, label: e }))} />
-            <label className="flex items-center gap-1.5 text-[13px] text-subtle">
+            <label className="flex items-center gap-1.5 text-[14px] text-subtle">
               {t.from}
               <Input
                 type="date"
@@ -187,7 +187,7 @@ export function AuditView() {
                 onChange={(e) => set({ from: e.target.value ? `${e.target.value}T00:00:00` : undefined })}
               />
             </label>
-            <label className="flex items-center gap-1.5 text-[13px] text-subtle">
+            <label className="flex items-center gap-1.5 text-[14px] text-subtle">
               {t.to}
               <Input
                 type="date"
@@ -227,17 +227,17 @@ export function AuditView() {
                   </span>
                 </Field>
                 <Field label={t.action}>
-                  <code dir="ltr" className="font-mono text-[13px]">
+                  <code dir="ltr" className="font-mono text-[14px]">
                     {open.action}
                   </code>
                 </Field>
                 <Field label={t.entity}>
-                  <code dir="ltr" className="font-mono text-[13px]">
+                  <code dir="ltr" className="font-mono text-[14px]">
                     {open.entityType}
                   </code>
                 </Field>
                 <Field label={t.entityId}>
-                  <code dir="ltr" className="font-mono text-[11px] break-all text-muted">
+                  <code dir="ltr" className="font-mono text-[12px] break-all text-muted">
                     {open.entityId ?? '—'}
                   </code>
                 </Field>

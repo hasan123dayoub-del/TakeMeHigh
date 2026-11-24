@@ -63,7 +63,7 @@ export function OffersView() {
         sortKey: 'validFrom',
         cell: (o) => (
           <div className="flex items-center gap-2 whitespace-nowrap">
-            <span className="num text-[13px]">
+            <span className="num text-[14px]">
               {f.date(dayOf(o.validFrom), 'short')} <span className="text-subtle">—</span> {f.date(dayOf(o.validTo), 'short')}
             </span>
             {o.live && (

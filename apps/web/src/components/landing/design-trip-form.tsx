@@ -182,7 +182,7 @@ export function DesignTripForm({ options, officeName, whatsappNumber }: { option
         <h2 className="heading-display mt-7 text-[30px] leading-tight sm:text-[38px]">
           <strong className="font-medium">{t.successTitle}</strong>
         </h2>
-        <p className="mt-3 max-w-md text-[15px] text-muted">{fmt(t.successBody, { office: officeName })}</p>
+        <p className="mt-3 max-w-md text-[16px] text-muted">{fmt(t.successBody, { office: officeName })}</p>
         {done.requestNo && (
           <div className="mt-8 rounded-card border border-border bg-surface-raised px-8 py-5 shadow-card">
             <p className="eyebrow">{t.requestNo}</p>
@@ -445,7 +445,7 @@ export function DesignTripForm({ options, officeName, whatsappNumber }: { option
                         {kind === 'TRANSPORT' && (
                           <div data-field="TRANSPORT.mode" className="sm:col-span-2">
                             <fieldset>
-                              <legend className="text-[13px] font-medium">
+                              <legend className="text-[14px] font-medium">
                                 {t.transportMode} <span className="text-danger" aria-hidden>*</span>
                               </legend>
                               <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label={t.transportMode}>

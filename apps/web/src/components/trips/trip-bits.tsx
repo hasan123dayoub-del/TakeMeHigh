@@ -44,12 +44,12 @@ export function DeadlineCell({ iso, open }: { iso: string; open: boolean }) {
         {f.date(iso, 'medium')} <span className="num text-xs text-muted">{f.date(iso, 'time')}</span>
       </span>
       {soon && (
-        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-warning/14 px-2 py-0.5 text-[11px] font-medium text-[color-mix(in_srgb,var(--warning)_72%,var(--text))] ring-1 ring-warning/24 ring-inset">
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-warning/14 px-2 py-0.5 text-[12px] font-medium text-[color-mix(in_srgb,var(--warning)_72%,var(--text))] ring-1 ring-warning/24 ring-inset">
           <Clock className="size-3" aria-hidden />
           {days >= 1 ? fmt(t.daysLeft, { n: Math.floor(days) }) : fmt(t.hoursLeft, { n: Math.max(1, Math.floor(days * 24)) })}
         </span>
       )}
-      {open && days <= 0 && <span className="text-[11px] text-muted">{t.ended}</span>}
+      {open && days <= 0 && <span className="text-[12px] text-muted">{t.ended}</span>}
     </div>
   );
 }

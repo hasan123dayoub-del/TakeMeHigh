@@ -158,7 +158,7 @@ function ReceiptDocument({ r, copy, print }: { r: Receipt; copy: boolean; print?
   const { locale } = useLocale();
   const refund = r.kind === 'REFUND';
   const office = r.office;
-  const officeName = (locale === 'en' && office?.officeNameEn) || office?.officeName || 'TakeMeHigh';
+  const officeName = (locale === 'en' && office?.officeNameEn) || office?.officeName || 'Take Me High';
 
   return (
     <article className={cn('relative overflow-hidden', print ? 'print-only-a5 p-0' : 'p-8')} dir={locale === 'ar' ? 'rtl' : 'ltr'}>

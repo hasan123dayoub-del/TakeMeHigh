@@ -101,7 +101,7 @@ export function SectionCard({
           {description && <CardDescription>{description}</CardDescription>}
         </div>
         {href && (
-          <Link href={href} className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:underline">
+          <Link href={href} className="inline-flex items-center gap-1 text-[14px] font-medium text-primary hover:underline">
             {linkLabel}
             <ChevronLeft className="size-3.5 rtl-flip ltr:rotate-180" aria-hidden />
           </Link>
@@ -179,7 +179,7 @@ export function DateChip({ iso, className }: { iso: string; className?: string }
     <span className={cn('grid size-12 shrink-0 place-items-center rounded-tile bg-surface-raised text-center leading-none shadow-card', className)}>
       <span>
         <span className="num block text-lg font-medium">{d.getDate()}</span>
-        <span className="mt-0.5 block text-[10px] tracking-wide text-muted uppercase">{month}</span>
+        <span className="mt-0.5 block text-[11px] tracking-wide text-muted uppercase">{month}</span>
       </span>
     </span>
   );

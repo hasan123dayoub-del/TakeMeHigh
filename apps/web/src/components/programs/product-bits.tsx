@@ -65,7 +65,7 @@ export function ServiceChip({ kind, label, size = 'md' }: { kind: ServiceKind; l
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap ring-1 ring-inset',
-        size === 'md' ? 'h-7 px-3 text-xs' : 'h-6 px-2.5 text-[11px]',
+        size === 'md' ? 'h-7 px-3 text-xs' : 'h-6 px-2.5 text-[12px]',
         SERVICE_TONE[kind],
       )}
     >
@@ -92,7 +92,7 @@ export function Callout({ tone = 'info', title, children, className }: { tone?: 
   return (
     <div
       className={cn(
-        'flex gap-3 rounded-[14px] p-3.5 text-[13px] leading-relaxed ring-1 ring-inset',
+        'flex gap-3 rounded-[14px] p-3.5 text-[14px] leading-relaxed ring-1 ring-inset',
         tone === 'info' && 'bg-accent-soft/60 ring-accent/30',
         tone === 'success' && 'bg-success/8 ring-success/25',
         tone === 'warning' && 'bg-warning/10 ring-warning/30',
@@ -123,7 +123,7 @@ export function ApiErrors({ error, className }: { error: unknown; className?: st
   if (!error) return null;
   const messages = error instanceof ApiError ? error.messages : [errorMessage(error)];
   return (
-    <div role="alert" className={cn('rounded-[14px] bg-danger/8 p-3.5 text-[13px] ring-1 ring-danger/25 ring-inset', className)}>
+    <div role="alert" className={cn('rounded-[14px] bg-danger/8 p-3.5 text-[14px] ring-1 ring-danger/25 ring-inset', className)}>
       <div className="flex items-center gap-2 font-medium text-danger">
         <AlertTriangle className="size-4" aria-hidden /> {t.errorsTitle}
       </div>

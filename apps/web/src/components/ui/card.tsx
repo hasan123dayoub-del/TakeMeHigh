@@ -50,7 +50,7 @@ export function CardTitle({ className, ...props }: ComponentProps<'h2'>) {
   return (
     <h2
       data-slot="card-title"
-      className={cn('heading-display text-[15px] leading-tight', className)}
+      className={cn('heading-display text-[16px] leading-tight', className)}
       {...props}
     />
   );
@@ -60,7 +60,7 @@ export function CardDescription({ className, ...props }: ComponentProps<'p'>) {
   return (
     <p
       data-slot="card-description"
-      className={cn('mt-1 text-[13px] text-muted', className)}
+      className={cn('mt-1 text-[14px] text-muted', className)}
       {...props}
     />
   );

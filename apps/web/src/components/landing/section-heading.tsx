@@ -32,7 +32,7 @@ export function SectionHeading({
           {titleA} <strong className="font-medium">{titleB}</strong>
         </h2>
         {body && (
-          <p className={cn('mt-3 text-[15px] leading-relaxed', tone === 'inverse' ? 'text-white/85' : 'text-muted')}>{body}</p>
+          <p className={cn('mt-3 text-[16px] leading-relaxed', tone === 'inverse' ? 'text-white/85' : 'text-muted')}>{body}</p>
         )}
       </div>
       {aside}

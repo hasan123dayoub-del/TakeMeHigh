@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, KeyRound, LogOut } from 'lucide-react';
+import { ClipboardList, KeyRound, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -28,8 +28,8 @@ import { isActive, useNavGroups, useNavItems } from './nav-items';
 
 const m = defineMessages({
   ar: {
-    notifications: 'التنبيهات',
-    noAlerts: 'لا توجد تنبيهات الآن',
+    notifications: 'المهام المعلّقة',
+    noAlerts: 'لا توجد مهام معلّقة الآن',
     allBranches: 'كل الفروع',
     changePassword: 'تغيير كلمة المرور',
     NEW_REQUESTS: 'طلبات رحلات جديدة من الصفحة العامة',
@@ -40,8 +40,8 @@ const m = defineMessages({
     VISAS_MISSING: 'تأشيرات غير معتمدة قبل السفر',
   },
   en: {
-    notifications: 'Notifications',
-    noAlerts: 'Nothing needs your attention',
+    notifications: 'Pending tasks',
+    noAlerts: 'No pending tasks',
     allBranches: 'All branches',
     changePassword: 'Change password',
     NEW_REQUESTS: 'New trip requests from the public page',
@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="glass flex min-h-[calc(100dvh-1rem)] flex-1 flex-col rounded-panel p-3 shadow-glass sm:min-h-[calc(100dvh-2rem)] sm:p-6 lg:min-h-[calc(100dvh-3rem)] xl:p-8">
           <header className="flex items-center gap-2 sm:gap-3">
             <MobileNav />
-            <Link href="/dashboard" aria-label="TakeMeHigh" className="rounded-full lg:hidden">
+            <Link href="/dashboard" aria-label="Take Me High" className="rounded-full lg:hidden">
               <Brand wordmarkClassName="max-sm:sr-only" />
             </Link>
             <BranchChip />
@@ -116,14 +116,14 @@ function Sidebar() {
   const { locale } = useLocale();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col overflow-y-auto px-4 py-6 lg:flex">
-      <Link href="/dashboard" className="rounded-full px-2" aria-label="TakeMeHigh">
+      <Link href="/dashboard" className="rounded-full px-2" aria-label="Take Me High">
         <Brand />
       </Link>
       {settings && <p className="mt-2 truncate px-2 text-xs text-muted">{(locale === 'en' && settings.officeNameEn) || settings.officeName}</p>}
       <nav aria-label="Main" className="mt-6 flex flex-col gap-5">
         {groups.map((g, i) => (
           <div key={g.label ?? i}>
-            {g.label && <p className="eyebrow mb-1.5 px-3 text-[11px] text-subtle">{g.label}</p>}
+            {g.label && <p className="eyebrow mb-1.5 px-3 text-[12px] text-subtle">{g.label}</p>}
             <ul className="flex flex-col gap-0.5">
               {g.items.map((item) => {
                 const active = isActive(pathname, item.href);
@@ -179,9 +179,9 @@ function NotificationsBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={circle} aria-label={`${t.notifications}${total ? ` (${total})` : ''}`}>
-        <Bell className="size-4" aria-hidden />
+        <ClipboardList className="size-4" aria-hidden />
         {total > 0 && (
-          <span className="num absolute -top-1 -end-1 grid h-5 min-w-5 place-items-center rounded-full bg-danger px-1 text-[10px] font-semibold text-danger-foreground">
+          <span className="num absolute -top-1 -end-1 grid h-5 min-w-5 place-items-center rounded-full bg-danger px-1 text-[11px] font-semibold text-danger-foreground">
             {total > 99 ? '99+' : total}
           </span>
         )}
@@ -193,7 +193,7 @@ function NotificationsBell() {
           <DropdownMenuItem key={n.type} asChild>
             <Link href={n.link} className="flex items-center gap-3">
               <span className={cn('size-2 shrink-0 rounded-full', n.severity === 'danger' ? 'bg-danger' : n.severity === 'warning' ? 'bg-warning' : 'bg-primary')} aria-hidden />
-              <span className="flex-1 text-[13px]">{t[n.type]}</span>
+              <span className="flex-1 text-[14px]">{t[n.type]}</span>
               <span className="num text-xs font-semibold">{n.count}</span>
             </Link>
           </DropdownMenuItem>

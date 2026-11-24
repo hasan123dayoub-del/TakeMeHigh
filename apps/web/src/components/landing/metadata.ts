@@ -7,7 +7,7 @@ import { cityName, officeName } from './utils';
 
 async function base() {
   const [site, locale, origin] = await Promise.all([getSite(), getLocale(), getOrigin()]);
-  const name = site ? officeName(site.office, locale) : 'TakeMeHigh';
+  const name = site ? officeName(site.office, locale) : 'Take Me High';
   return { site, locale, origin, name };
 }
 

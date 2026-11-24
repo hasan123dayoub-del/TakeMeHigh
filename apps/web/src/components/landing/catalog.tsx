@@ -151,7 +151,7 @@ export function Catalog({
 
   const chip = (active: boolean) =>
     cn(
-      'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[13px] font-medium whitespace-nowrap transition-colors',
+      'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[14px] font-medium whitespace-nowrap transition-colors',
       active
         ? 'border-ink bg-ink text-ink-foreground'
         : 'border-border bg-surface-raised text-muted hover:border-border-strong hover:text-foreground',
@@ -290,7 +290,7 @@ export function Catalog({
                   {t.resetFilters}
                 </button>
               )}
-              <Link href="/design-your-trip" className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-[13px] font-medium text-primary-foreground">
+              <Link href="/design-your-trip" className="inline-flex h-9 items-center rounded-full bg-primary px-4 text-[14px] font-medium text-primary-foreground">
                 {t.designTrip}
               </Link>
             </div>
@@ -304,7 +304,7 @@ export function Catalog({
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="inline-flex h-12 items-center gap-2 rounded-full border border-border-strong bg-surface-raised px-7 text-[15px] font-medium shadow-card transition-colors hover:border-ink/40 disabled:opacity-60"
+            className="inline-flex h-12 items-center gap-2 rounded-full border border-border-strong bg-surface-raised px-7 text-[16px] font-medium shadow-card transition-colors hover:border-ink/40 disabled:opacity-60"
           >
             {loadingMore && <Loader2 className="size-4 animate-spin" aria-hidden />}
             {t.loadMore}

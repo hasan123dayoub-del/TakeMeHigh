@@ -229,7 +229,7 @@ export function RequestSheet({ id, onClose }: { id: string | null; onClose: () =
 
               {canManage && !locked && (
                 <section className="flex flex-col gap-3 rounded-field border border-border p-4">
-                  <h3 className="heading-display text-[13px]">{t.handle}</h3>
+                  <h3 className="heading-display text-[14px]">{t.handle}</h3>
                   <FormField label={t.status}>
                     <Select value={status} onValueChange={setStatus}>
                       <SelectTrigger>
@@ -260,7 +260,7 @@ export function RequestSheet({ id, onClose }: { id: string | null; onClose: () =
 
               {canManage && isAdmin && !locked && (
                 <section className="flex flex-col gap-3 rounded-field border border-border p-4">
-                  <h3 className="heading-display text-[13px]">{t.assign}</h3>
+                  <h3 className="heading-display text-[14px]">{t.assign}</h3>
                   <div className="flex gap-2">
                     <Select value={branchId || undefined} onValueChange={setBranchId}>
                       <SelectTrigger className="flex-1">
@@ -287,7 +287,7 @@ export function RequestSheet({ id, onClose }: { id: string | null; onClose: () =
 
               {canManage && !locked && (
                 <section className="flex flex-col gap-3 rounded-field border border-border p-4">
-                  <h3 className="heading-display text-[13px]">{t.actions}</h3>
+                  <h3 className="heading-display text-[14px]">{t.actions}</h3>
                   <div className="flex flex-wrap gap-2">
                     {can('trips.manage') && (
                       <Button onClick={() => setDialog('draft')}>

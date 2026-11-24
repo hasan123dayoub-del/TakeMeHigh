@@ -272,7 +272,7 @@ function Statistics() {
               <span className="grid size-8 place-items-center rounded-full bg-accent-soft text-primary" aria-hidden>
                 <Info className="size-4" />
               </span>
-              <h2 className="heading-display text-[15px]">{t.defsTitle}</h2>
+              <h2 className="heading-display text-[16px]">{t.defsTitle}</h2>
             </div>
             <dl className="mt-4 grid gap-4 text-sm leading-relaxed sm:grid-cols-2 xl:grid-cols-4">
               {[

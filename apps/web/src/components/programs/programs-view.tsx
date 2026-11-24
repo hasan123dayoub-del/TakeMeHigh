@@ -56,7 +56,7 @@ export function ProgramsView() {
           const cities = routeCities(p);
           return (
             <div className="min-w-[200px]">
-              <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[13px]">
+              <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[14px]">
                 {cities.map((c, i) => (
                   <Fragment key={`${c.id}-${i}`}>
                     {i > 0 && <ArrowRight className="rtl-flip size-3 text-subtle" aria-hidden />}
@@ -64,7 +64,7 @@ export function ProgramsView() {
                   </Fragment>
                 ))}
               </div>
-              <div className="num ltr-nums mt-0.5 text-[11px] text-subtle" dir="ltr">
+              <div className="num ltr-nums mt-0.5 text-[12px] text-subtle" dir="ltr">
                 {p.legs.map((l) => l.trip.code).join(' → ')}
               </div>
             </div>
@@ -76,7 +76,7 @@ export function ProgramsView() {
         id: 'dates',
         header: t.dates,
         cell: (p) => (
-          <span className="num text-[13px] whitespace-nowrap">
+          <span className="num text-[14px] whitespace-nowrap">
             {f.date(p.startsAt, 'short')} <span className="text-subtle">—</span> {f.date(p.endsAt, 'short')}
           </span>
         ),
@@ -85,7 +85,7 @@ export function ProgramsView() {
         id: 'deadline',
         header: t.deadline,
         sortKey: 'registrationDeadline',
-        cell: (p) => <span className="num text-[13px] whitespace-nowrap">{f.date(p.registrationDeadline, 'short')}</span>,
+        cell: (p) => <span className="num text-[14px] whitespace-nowrap">{f.date(p.registrationDeadline, 'short')}</span>,
       },
       {
         id: 'seats',
@@ -121,7 +121,7 @@ export function ProgramsView() {
       {
         id: 'branch',
         header: t.branch,
-        cell: (p) => <span className="text-[13px] whitespace-nowrap text-muted">{p.branch?.name ?? t.shared}</span>,
+        cell: (p) => <span className="text-[14px] whitespace-nowrap text-muted">{p.branch?.name ?? t.shared}</span>,
       },
     ],
     [t, name, f, locale],

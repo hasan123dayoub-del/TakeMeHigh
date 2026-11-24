@@ -95,7 +95,7 @@ export function OffersSection({
                 </div>
                 <div className="flex flex-col p-6 sm:p-8">
                   <h3 className="font-display text-[22px] leading-snug font-medium">{o.title}</h3>
-                  {o.description && <p className="mt-2 text-[15px] leading-relaxed text-muted">{o.description}</p>}
+                  {o.description && <p className="mt-2 text-[16px] leading-relaxed text-muted">{o.description}</p>}
                   {o.services.length > 0 && (
                     <>
                       <p className="eyebrow mt-6">{t.includes}</p>
@@ -120,7 +120,7 @@ export function OffersSection({
                       </ul>
                     </>
                   )}
-                  <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-muted">
+                  <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[14px] text-muted">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarClock className="size-4 text-primary" aria-hidden />
                       <span className="num">{fmt(t.validUntil, { date: fDate(o.validTo, locale) })}</span>
@@ -167,7 +167,7 @@ export function OffersSection({
                 <span aria-hidden className="pointer-events-none absolute -top-20 -end-16 size-64 rounded-full border border-white/20" />
                 <div className="relative flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <span className="inline-flex h-6 items-center rounded-full bg-white/18 px-2.5 text-[11px] font-medium tracking-[0.14em] uppercase backdrop-blur">
+                    <span className="inline-flex h-6 items-center rounded-full bg-white/18 px-2.5 text-[12px] font-medium tracking-[0.14em] uppercase backdrop-blur">
                       {t.discount}
                     </span>
                     <h3 className="mt-3 font-display text-[20px] leading-snug font-medium">{o.title}</h3>
@@ -186,7 +186,7 @@ export function OffersSection({
                   )}
                 </div>
                 {o.description && <p className="relative mt-2 text-sm leading-relaxed text-white/85">{o.description}</p>}
-                <p className="relative mt-3 inline-flex items-center gap-1.5 text-[13px] text-white/80">
+                <p className="relative mt-3 inline-flex items-center gap-1.5 text-[14px] text-white/80">
                   <CalendarClock className="size-4" aria-hidden />
                   <span className="num">{fmt(t.validRange, { from: fDate(o.validFrom, locale, 'short'), to: fDate(o.validTo, locale) })}</span>
                 </p>
@@ -208,7 +208,7 @@ export function OffersSection({
                               <span className="sr-only">{t.oldPrice}: </span>
                               {money(target.price, target.currencyCode, locale)}
                             </s>
-                            <span className="text-[15px] font-semibold num">{money(after, target.currencyCode, locale)}</span>
+                            <span className="text-[16px] font-semibold num">{money(after, target.currencyCode, locale)}</span>
                             <span className="text-[#5a6878] dark:text-sky-300">{t.perPerson}</span>
                           </p>
                         </div>

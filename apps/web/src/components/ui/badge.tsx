@@ -29,7 +29,7 @@ export const badgeVariants = cva(
         ink: 'bg-ink text-ink-foreground ring-ink [--dot:var(--ink-foreground)]',
       },
       size: {
-        sm: 'h-5 px-2 text-[11px]',
+        sm: 'h-5 px-2 text-[12px]',
         md: 'h-6 px-2.5 text-xs',
       },
       shape: {

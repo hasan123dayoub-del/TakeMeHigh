@@ -227,7 +227,7 @@ export function EmployeesView() {
         sortKey: 'lastLoginAt',
         cell: (u) =>
           u.lastLoginAt ? (
-            <span className="num text-[13px]" title={f.date(u.lastLoginAt, 'dateTime')}>
+            <span className="num text-[14px]" title={f.date(u.lastLoginAt, 'dateTime')}>
               {f.date(u.lastLoginAt, 'dateTime')}
             </span>
           ) : (

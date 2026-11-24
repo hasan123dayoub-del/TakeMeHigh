@@ -48,7 +48,7 @@ export function PrintHeader({ title, subtitle }: { title: string; subtitle?: str
   return (
     <header className="print-header">
       <div>
-        <div className="print-office">{(locale === 'en' && settings?.officeNameEn) || settings?.officeName || 'TakeMeHigh'}</div>
+        <div className="print-office">{(locale === 'en' && settings?.officeNameEn) || settings?.officeName || 'Take Me High'}</div>
         <h1 className="print-title">{title}</h1>
         {subtitle && <p className="print-subtitle">{subtitle}</p>}
       </div>

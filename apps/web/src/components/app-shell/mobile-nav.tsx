@@ -35,7 +35,7 @@ export function MobileNav() {
           <nav aria-label="Main" className="flex flex-col gap-4">
             {groups.map((g, i) => (
               <div key={g.label ?? i}>
-                {g.label && <p className="eyebrow mb-1 px-3 text-[11px] text-subtle">{g.label}</p>}
+                {g.label && <p className="eyebrow mb-1 px-3 text-[12px] text-subtle">{g.label}</p>}
                 {g.items.map((item) => {
                   const active = isActive(pathname, item.href);
                   const Icon = item.icon;

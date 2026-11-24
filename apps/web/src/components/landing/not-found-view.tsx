@@ -18,7 +18,7 @@ export async function NotFoundView() {
         <h1 className="heading-display mt-3 text-[28px] leading-tight sm:text-[34px]">
           <strong className="font-medium">{t.notFoundTitle}</strong>
         </h1>
-        <p className="mt-3 max-w-md text-[15px] text-muted">{t.notFoundBody}</p>
+        <p className="mt-3 max-w-md text-[16px] text-muted">{t.notFoundBody}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-2.5">
           <Link href="/#trips" className="inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground shadow-primary">
             {t.browseTrips}

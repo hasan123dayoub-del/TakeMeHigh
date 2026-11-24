@@ -9,7 +9,7 @@ import { officeName } from './utils';
 /** "Design your trip" (CTR-01..05): the request form with every option loaded on the server. */
 export async function DesignTripPage() {
   const [options, site, locale, t] = await Promise.all([getRequestOptions(), getSite(), getLocale(), getMessages(landingMessages)]);
-  const office = site ? officeName(site.office, locale) : 'TakeMeHigh';
+  const office = site ? officeName(site.office, locale) : 'Take Me High';
 
   return (
     <div className="mx-auto max-w-[1280px] px-3 pt-6 sm:px-6">
@@ -27,7 +27,7 @@ export async function DesignTripPage() {
             <h1 className="heading-display mt-3 text-[34px] leading-[1.08] sm:text-[44px]">
               {t.formTitleA} <strong className="font-medium">{t.formTitleB}</strong>
             </h1>
-            <p className="mt-4 text-[15px] leading-relaxed text-white/85">{t.formBody}</p>
+            <p className="mt-4 text-[16px] leading-relaxed text-white/85">{t.formBody}</p>
             <ol className="mt-8 grid gap-3">
               {[t.designStep1, t.designStep2, t.designStep3].map((s, i) => (
                 <li key={s} className="flex items-center gap-3 rounded-full bg-white/12 py-2 ps-2 pe-4 text-sm backdrop-blur">
@@ -36,7 +36,7 @@ export async function DesignTripPage() {
                 </li>
               ))}
             </ol>
-            <ul className="mt-8 grid gap-2.5 text-[13px] text-white/80">
+            <ul className="mt-8 grid gap-2.5 text-[14px] text-white/80">
               <li className="flex items-center gap-2">
                 <ShieldCheck className="size-4" aria-hidden />
                 {t.privacyNote}

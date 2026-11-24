@@ -61,7 +61,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               'relative inline-flex items-center justify-center gap-1.5 rounded-full font-medium whitespace-nowrap transition-colors',
               'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-              size === 'sm' ? 'h-8 px-3.5 text-xs' : 'h-9 px-4 text-[13px]',
+              size === 'sm' ? 'h-8 px-3.5 text-xs' : 'h-9 px-4 text-[14px]',
               active ? 'text-ink-foreground' : 'text-muted hover:text-foreground',
               appearance === 'loose' &&
                 !active &&

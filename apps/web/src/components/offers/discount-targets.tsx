@@ -136,14 +136,14 @@ function TargetList({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-1.5">
-                  <span className="num ltr-nums text-[11px] font-medium text-muted">{r.code}</span>
+                  <span className="num ltr-nums text-[12px] font-medium text-muted">{r.code}</span>
                   {r.status !== 'OPEN' && <StatusBadge kind="product" status={r.status} size="sm" />}
                 </span>
-                <span className="mt-0.5 block truncate text-[13px] font-medium">{r.title}</span>
+                <span className="mt-0.5 block truncate text-[14px] font-medium">{r.title}</span>
               </span>
               <span className="shrink-0 text-end">
-                <span className="num block text-[11px] text-muted line-through decoration-danger/60">{f.money(r.pricePerPerson, r.currencyCode)}</span>
-                <span className={cn('num block text-[13px] font-semibold', on && 'text-[color-mix(in_srgb,var(--success)_75%,var(--text))]')}>{f.money(fromCents(after), r.currencyCode)}</span>
+                <span className="num block text-[12px] text-muted line-through decoration-danger/60">{f.money(r.pricePerPerson, r.currencyCode)}</span>
+                <span className={cn('num block text-[14px] font-semibold', on && 'text-[color-mix(in_srgb,var(--success)_75%,var(--text))]')}>{f.money(fromCents(after), r.currencyCode)}</span>
               </span>
             </button>
           );

@@ -27,7 +27,7 @@ export function SeatsPill({ seats, t, className }: { seats: number; t: LandingMe
 
 export function RouteLine({ cities, className }: { cities: string[]; className?: string }) {
   return (
-    <p className={cn('flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px] text-muted', className)}>
+    <p className={cn('flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[14px] text-muted', className)}>
       <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />
       {cities.map((c, i) => (
         <span key={`${c}-${i}`} className="inline-flex items-center gap-1.5">
@@ -119,7 +119,7 @@ export function ProductCard({
           </Link>
         </h3>
         {route.length > 0 && <RouteLine cities={route} className="mt-2" />}
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted">
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px] text-muted">
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays className="size-3.5 text-primary" aria-hidden />
             <span className="num">{fRange(item.startsAt, item.endsAt, locale)}</span>

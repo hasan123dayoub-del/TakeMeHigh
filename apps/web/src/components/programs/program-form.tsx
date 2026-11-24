@@ -308,8 +308,8 @@ function ProgramForm({ program }: { program: Program | null }) {
           </Card>
 
           <Card className="p-5">
-            <h3 className="eyebrow text-[11px]">{t.summary}</h3>
-            <dl className="mt-4 flex flex-col gap-3.5 text-[13px]">
+            <h3 className="eyebrow text-[12px]">{t.summary}</h3>
+            <dl className="mt-4 flex flex-col gap-3.5 text-[14px]">
               <SummaryRow icon={Coins} label={t.currency}>
                 {legs.length ? (
                   <span className={cn('inline-flex items-center gap-1.5 font-medium', s.mixedCurrency ? 'text-danger' : 'text-[color-mix(in_srgb,var(--success)_75%,var(--text))]')}>

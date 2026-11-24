@@ -162,10 +162,10 @@ export function DesignCta({ t }: { t: LandingMessages }) {
             <h2 id="design-title" className="heading-display mt-3 text-[32px] leading-[1.1] sm:text-[44px]">
               {t.designTitleA} <strong className="font-medium">{t.designTitleB}</strong>
             </h2>
-            <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#18263b]/85">{t.designBody}</p>
+            <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-[#18263b]/85">{t.designBody}</p>
             <Link
               href="/design-your-trip"
-              className="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[15px] font-medium text-ink-foreground transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-ink-hover"
+              className="mt-7 inline-flex h-12 items-center gap-2 rounded-full bg-ink px-6 text-[16px] font-medium text-ink-foreground transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-ink-hover"
             >
               {t.designCta}
               <ArrowUpRight className="size-4 rtl-flip" aria-hidden />
@@ -175,7 +175,7 @@ export function DesignCta({ t }: { t: LandingMessages }) {
             {steps.map(({ Icon, label }, i) => (
               <li key={label} className="flex items-center gap-4 rounded-tile bg-white/80 p-4 text-[#111418] shadow-card backdrop-blur-md dark:bg-sky-950/60 dark:text-sky-50">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-ink text-sm font-medium text-ink-foreground num">{i + 1}</span>
-                <span className="flex-1 text-[15px] font-medium">{label}</span>
+                <span className="flex-1 text-[16px] font-medium">{label}</span>
                 <Icon className="size-5 text-sky-600" aria-hidden />
               </li>
             ))}

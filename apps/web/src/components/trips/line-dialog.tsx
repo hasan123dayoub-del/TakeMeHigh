@@ -306,7 +306,7 @@ export function LineDialog({ trip, line, canProfit, onClose }: { trip: TripFull;
                           {x.costPerPerson != null && (
                             <div className="text-end">
                               <div className="num text-sm font-medium">{f.money(x.costPerPerson, x.currencyCode)}</div>
-                              <div className="text-[11px] text-muted">{t.perPerson}</div>
+                              <div className="text-[12px] text-muted">{t.perPerson}</div>
                             </div>
                           )}
                           {item?.id === x.id && <Check className="size-4 shrink-0 text-primary" aria-hidden />}

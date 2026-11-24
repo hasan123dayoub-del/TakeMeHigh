@@ -34,7 +34,15 @@
   --radius-card: 24px; /* cards inside the glass panel */
   --radius-panel: 32px; /* the glass panel itself */
 
-  /* Typography */
+  /* Typography: one step larger than Tailwind's defaults for easier reading */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: calc(1.15 / 0.8125);
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: calc(1.4 / 0.9375);
+  --text-base: 1.0625rem;
+  --text-base--line-height: calc(1.6 / 1.0625);
+  --text-lg: 1.1875rem;
+  --text-lg--line-height: calc(1.75 / 1.1875);
   --font-sans: var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-outfit), var(--font-arabic-display), var(--font-inter), var(--font-arabic), ui-sans-serif, system-ui, sans-serif;
   --tracking-display: 0.12em;
@@ -196,6 +204,15 @@
   --shadow-card: 0 1px 2px rgb(17 20 24 / 0.04);
   --shadow-pop: 0 24px 48px -16px rgb(39 63 95 / 0.28), 0 2px 8px rgb(39 63 95 / 0.08);
   --shadow-primary: 0 12px 30px -12px rgb(63 112 171 / 0.7);
+
+  /* Take Me High seal (passport stamp), recoloured to the Cirrus sky palette */
+  --logo-ring: #273f5f;
+  --logo-paper: #ffffff;
+  --logo-pin-a: #7fa7d3;
+  --logo-pin-b: #3f70ab;
+  --logo-window: #f2f8fd;
+  --logo-window-badge: #e3effa;
+  --logo-sun: #f0a73a;
 }
 
 /* ------------------------------------------------------------------------ */
@@ -255,6 +272,14 @@
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2);
   --shadow-pop: 0 24px 48px -16px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(169 200 236 / 0.08);
   --shadow-primary: 0 12px 30px -12px rgb(127 180 234 / 0.45);
+
+  --logo-ring: #c9ddf3;
+  --logo-paper: #121e30;
+  --logo-pin-a: #a9c8ec;
+  --logo-pin-b: #5b8cc4;
+  --logo-window: #18263b;
+  --logo-window-badge: #e3effa;
+  --logo-sun: #f5b955;
 }
 
 /* Expose semantic tokens as Tailwind utilities (bg-primary, text-muted …). */
@@ -375,7 +400,7 @@
 
 /* Small uppercase label above titles, table headers, KPI labels. */
 @utility eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: var(--tracking-eyebrow);
@@ -592,5 +617,235 @@
   }
   .print-only-a5 {
     max-width: 148mm;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Take Me High motion layer
+ * Soft, travel-flavoured motion: the stamp, clouds, planes on a route, and a gentle
+ * rise for cards, rows and pages. All of it is switched off under reduced motion.
+ * ------------------------------------------------------------------------- */
+@keyframes tmh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes tmh-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes tmh-route {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+@keyframes tmh-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.7);
+  }
+}
+@keyframes tmh-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+@keyframes tmh-cloud {
+  from {
+    transform: translateX(-280px);
+  }
+  to {
+    transform: translateX(1100px);
+  }
+}
+@keyframes tmh-orbit {
+  to {
+    offset-distance: 100%;
+  }
+}
+@keyframes tmh-sway {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-4%);
+  }
+}
+@keyframes tmh-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes tmh-row {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes tmh-fly {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  8%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+/* Seal parts (see components/brand/logo.tsx) */
+.logo-seal .logo-ring-text,
+.logo-seal .logo-route {
+  transform-origin: 100px 100px;
+}
+.logo-seal .logo-pin,
+.logo-seal .logo-sun,
+.logo-seal .logo-spark,
+.logo-badge .logo-pin {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.logo-animated .logo-ring-text {
+  animation: tmh-spin 60s linear infinite;
+}
+.logo-animated .logo-pin {
+  animation: tmh-float 3.2s ease-in-out infinite;
+}
+.logo-animated .logo-route {
+  animation: tmh-route 1.1s linear infinite;
+}
+.logo-animated .logo-sun {
+  animation: tmh-pulse 2.6s ease-in-out infinite;
+}
+.logo-animated .logo-spark {
+  animation: tmh-twinkle 2.2s ease-in-out infinite;
+}
+.logo-animated .logo-spark + .logo-spark {
+  animation-delay: 1.1s;
+}
+
+/* Login / loader sky scene */
+.travel-scene .scene-sun {
+  background: radial-gradient(circle, rgb(255 214 140 / 0.55) 0%, rgb(255 214 140 / 0.12) 45%, transparent 70%);
+  animation: tmh-pulse 7s ease-in-out infinite;
+}
+.scene-cloud {
+  left: 0;
+  animation: tmh-cloud 50s linear infinite;
+  will-change: transform;
+}
+.scene-hills {
+  animation: tmh-sway 18s ease-in-out infinite;
+}
+.scene-pin {
+  animation: tmh-float 2.4s ease-in-out infinite;
+}
+.scene-orbit {
+  transform-origin: 220px 220px;
+  animation: tmh-spin 90s linear infinite;
+}
+.scene-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  offset-path: circle(46.6% at 50% 50%);
+  offset-rotate: auto;
+  animation: tmh-orbit 14s linear infinite;
+}
+.scene-plane > svg {
+  display: block;
+  transform: translate(-50%, -50%);
+}
+
+/* A plane crossing the landing hero on a curved route */
+.hero-flight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  offset-path: path('M -80 420 C 260 120, 620 360, 900 160 S 1300 40, 1420 120');
+  offset-rotate: auto;
+  animation: tmh-fly 16s ease-in-out infinite;
+}
+[dir='rtl'] .hero-flight {
+  offset-path: path('M 1420 420 C 1080 120, 720 360, 440 160 S 40 40, -80 120');
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Cards rise in, siblings in a grid follow one another */
+  [data-slot='card'],
+  [data-slot='stat-card'] {
+    animation: tmh-rise 520ms var(--ease-out-soft) both;
+  }
+  :is([data-slot='card'], [data-slot='stat-card']):nth-child(2) {
+    animation-delay: 60ms;
+  }
+  :is([data-slot='card'], [data-slot='stat-card']):nth-child(3) {
+    animation-delay: 120ms;
+  }
+  :is([data-slot='card'], [data-slot='stat-card']):nth-child(4) {
+    animation-delay: 180ms;
+  }
+  :is([data-slot='card'], [data-slot='stat-card']):nth-child(n + 5) {
+    animation-delay: 240ms;
+  }
+
+  /* Table rows slide in one after another */
+  main tbody tr {
+    animation: tmh-row 380ms var(--ease-out-soft) both;
+  }
+  main tbody tr:nth-child(2) { animation-delay: 25ms; }
+  main tbody tr:nth-child(3) { animation-delay: 50ms; }
+  main tbody tr:nth-child(4) { animation-delay: 75ms; }
+  main tbody tr:nth-child(5) { animation-delay: 100ms; }
+  main tbody tr:nth-child(6) { animation-delay: 125ms; }
+  main tbody tr:nth-child(7) { animation-delay: 150ms; }
+  main tbody tr:nth-child(8) { animation-delay: 175ms; }
+  main tbody tr:nth-child(9) { animation-delay: 200ms; }
+  main tbody tr:nth-child(n + 10) { animation-delay: 225ms; }
+
+  /* Buttons and nav links: a small lift on hover, a press on click */
+  [data-slot='button']:not(:disabled):hover,
+  nav a:hover {
+    translate: 0 -1px;
+  }
+  [data-slot='button']:not(:disabled):active {
+    scale: 0.97;
+  }
+  nav a svg {
+    transition: transform 300ms var(--ease-out-soft);
+  }
+  nav a:hover svg {
+    transform: scale(1.12) rotate(-6deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-plane,
+  .hero-flight,
+  .scene-cloud {
+    animation: none !important;
+  }
+  .hero-flight {
+    display: none;
   }
 }

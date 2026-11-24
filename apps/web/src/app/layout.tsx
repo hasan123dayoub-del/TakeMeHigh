@@ -26,9 +26,9 @@ const readex = Readex_Pro({ subsets: ['arabic', 'latin'], variable: '--font-arab
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: { default: 'TakeMeHigh', template: '%s · TakeMeHigh' },
-  description: 'TakeMeHigh: نظام تشغيل مكتب السياحة — الرحلات والبرامج والعروض والحجوزات والعملاء والموردون والمقاعد في لوحة واحدة.',
-  applicationName: 'TakeMeHigh',
+  title: { default: 'Take Me High', template: '%s · Take Me High' },
+  description: 'Take Me High: نظام تشغيل مكتب السياحة — الرحلات والبرامج والعروض والحجوزات والعملاء والموردون والمقاعد في لوحة واحدة.',
+  applicationName: 'Take Me High',
 };
 
 export const viewport: Viewport = {

@@ -245,7 +245,7 @@ function LineRow({
                 <SelectItem key={it.id} value={it.id}>
                   <span className="flex flex-col">
                     <span>{it.name}</span>
-                    <span className="text-[11px] text-muted">
+                    <span className="text-[12px] text-muted">
                       {it.company.name}
                       {it.costPerPerson != null && <span className="num"> · {f.money(it.costPerPerson, it.currencyCode)}</span>}
                     </span>

@@ -30,8 +30,8 @@ function Stop({ city, at, kind }: { city: NamedRef; at?: string; kind: 'start' |
       >
         <Icon className="size-[18px]" aria-hidden />
       </span>
-      <span className="text-[13px] leading-tight font-medium">{name(city)}</span>
-      {at && <span className="num text-[11px] text-muted">{f.date(at, 'short')}</span>}
+      <span className="text-[14px] leading-tight font-medium">{name(city)}</span>
+      {at && <span className="num text-[12px] text-muted">{f.date(at, 'short')}</span>}
     </div>
   );
 }
@@ -62,7 +62,7 @@ export function ProgramItinerary({ program }: { program: Program }) {
                 className="group rounded-[16px] border border-border bg-surface-raised p-3 shadow-card transition-[border-color,transform] hover:-translate-y-0.5 hover:border-primary/40"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="num ltr-nums text-[11px] font-medium text-muted">
+                  <span className="num ltr-nums text-[12px] font-medium text-muted">
                     {fmt(t.leg, { n: i + 1 })} · {trip.code}
                   </span>
                   <span className="flex items-center gap-1 text-primary">
@@ -73,7 +73,7 @@ export function ProgramItinerary({ program }: { program: Program }) {
                     ))}
                   </span>
                 </div>
-                <div className="mt-1.5 truncate text-[13px] font-medium group-hover:text-primary">{trip.title}</div>
+                <div className="mt-1.5 truncate text-[14px] font-medium group-hover:text-primary">{trip.title}</div>
                 <div className="mt-2 flex items-center justify-between gap-2 text-xs">
                   <StatusBadge kind="product" status={trip.status} size="sm" />
                   <span className="num font-semibold">{f.money(trip.pricePerPerson, trip.currencyCode)}</span>
@@ -83,7 +83,7 @@ export function ProgramItinerary({ program }: { program: Program }) {
                 <span className="h-0 flex-1 border-t-2 border-dashed border-border-strong" />
                 <ArrowRight className="rtl-flip size-4" />
               </div>
-              <div className="num text-center text-[11px] text-muted">
+              <div className="num text-center text-[12px] text-muted">
                 {f.date(trip.startsAt, 'short')} {f.date(trip.startsAt, 'time')} — {f.date(trip.endsAt, 'short')} {f.date(trip.endsAt, 'time')}
               </div>
             </li>

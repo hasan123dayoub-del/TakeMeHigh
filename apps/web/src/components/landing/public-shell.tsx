@@ -9,7 +9,7 @@ import { chatLink, officeName } from './utils';
 /** Header + main landmark + footer of every public page (no auth, BR-18). */
 export async function PublicShell({ children }: { children: ReactNode }) {
   const [site, locale, t] = await Promise.all([getSite(), getLocale(), getMessages(landingMessages)]);
-  const name = site ? officeName(site.office, locale) : 'TakeMeHigh';
+  const name = site ? officeName(site.office, locale) : 'Take Me High';
   const whatsappHref = site ? chatLink(site.office.whatsappNumber, locale === 'ar' ? 'مرحباً' : 'Hello') : null;
 
   return (

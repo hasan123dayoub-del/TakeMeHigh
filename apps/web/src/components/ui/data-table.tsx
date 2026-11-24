@@ -278,7 +278,7 @@ export function DataTablePagination({
   return (
     <nav
       aria-label="Pagination"
-      className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-[13px] text-muted"
+      className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-[14px] text-muted"
     >
       <p className="num" aria-live="polite">
         {t.showing} <span className="font-medium text-foreground">{formatNumber(from, { locale: intl })}</span>–

@@ -26,7 +26,7 @@ export function SelectTrigger({
       className={cn(
         fieldBase,
         'flex items-center justify-between gap-2 text-left data-placeholder:text-subtle [&>span]:truncate',
-        size === 'md' ? 'h-11 px-4' : 'h-9 rounded-[12px] px-3 text-[13px]',
+        size === 'md' ? 'h-11 px-4' : 'h-9 rounded-[12px] px-3 text-[14px]',
         className,
       )}
     >

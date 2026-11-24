@@ -10,7 +10,7 @@ export function BrandMark({ name, logoUrl, className, inverse }: { name: string;
     <span
       aria-hidden
       className={cn(
-        'grid size-9 shrink-0 place-items-center rounded-full font-display text-[15px] font-medium',
+        'grid size-9 shrink-0 place-items-center rounded-full font-display text-[16px] font-medium',
         inverse ? 'bg-white/15 text-white' : 'bg-altitude shadow-primary',
         className,
       )}

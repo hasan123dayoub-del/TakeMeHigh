@@ -443,7 +443,7 @@ export function NewBooking() {
         </div>
 
         <Card tone="raised" className="sticky top-4 flex flex-col gap-3 p-5">
-          <h2 className="heading-display text-[15px]">{t.summary}</h2>
+          <h2 className="heading-display text-[16px]">{t.summary}</h2>
           {info ? (
             <>
               <div className="text-sm font-medium">{info.title}</div>
@@ -488,7 +488,7 @@ function Step({ n, title, done, muted, children }: { n: number; title: string; d
     <Card className={cn('p-5 sm:p-6', muted && 'opacity-90')}>
       <div className="mb-4 flex items-center gap-3">
         <span className={cn('num grid size-8 shrink-0 place-items-center rounded-full text-sm font-medium', done ? 'bg-primary text-primary-foreground' : 'bg-surface-raised text-muted ring-1 ring-border')}>{n}</span>
-        <h2 className="heading-display text-[15px]">{title}</h2>
+        <h2 className="heading-display text-[16px]">{title}</h2>
       </div>
       {children}
     </Card>
