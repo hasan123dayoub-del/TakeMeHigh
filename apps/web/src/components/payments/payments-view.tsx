@@ -1,21 +1,23 @@
 'use client';
 
 import { LABELS, PAYMENT_KINDS } from '@travelos/shared';
-import { Wallet } from 'lucide-react';
+import { CreditCard, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { FilterSelect, ResourceTable, type ResourceColumn } from '@/components/data/resource-table';
 import { StatusBadge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
-import { useAuth } from '@/lib/auth';
+import { useAuth, useCan } from '@/lib/auth';
 import { useLookups } from '@/lib/hooks';
 import { defineMessages, fmt, useLocale, useMessages } from '@/lib/i18n';
 import type { Paginated, PaymentRow } from '@/lib/types/api';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { DateRange } from '../bookings/date-range';
+import { NewPaymentDialog } from './new-payment-dialog';
 
 const m = defineMessages({
   ar: {
@@ -35,7 +37,8 @@ const m = defineMessages({
     currency: 'العملة',
     search: 'رقم الوصل أو الدافع أو رقم الحجز…',
     empty: 'لا توجد دفعات',
-    emptyBody: 'تُسجَّل الدفعات من صفحة الحجز.',
+    emptyBody: 'اضغط «تسجيل دفعة» واختر الحجز.',
+    add: 'تسجيل دفعة',
     net: 'الصافي {c}',
     received: 'مقبوض {v}',
     refunded: 'مسترجع {v}',
@@ -57,7 +60,8 @@ const m = defineMessages({
     currency: 'Currency',
     search: 'Receipt no., payer or booking no.…',
     empty: 'No payments',
-    emptyBody: 'Payments are recorded from the booking page.',
+    emptyBody: 'Press “Record payment” and pick the booking.',
+    add: 'Record payment',
     net: 'Net {c}',
     received: 'Received {v}',
     refunded: 'Refunded {v}',
@@ -74,6 +78,8 @@ export function PaymentsView() {
   const router = useRouter();
   const { isAdmin } = useAuth();
   const lookups = useLookups();
+  const canPay = useCan('payments.create');
+  const [adding, setAdding] = useState(false);
 
   const columns = useMemo<ResourceColumn<PaymentRow>[]>(
     () => [
@@ -115,7 +121,19 @@ export function PaymentsView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader eyebrow={t.eyebrow} title={t.title} description={t.description} />
+      <PageHeader
+        eyebrow={t.eyebrow}
+        title={t.title}
+        description={t.description}
+        actions={
+          canPay && (
+            <Button onClick={() => setAdding(true)}>
+              <CreditCard /> {t.add}
+            </Button>
+          )
+        }
+      />
+      {adding && <NewPaymentDialog onClose={() => setAdding(false)} />}
       <ResourceTable<PaymentRow>
         endpoint="/payments"
         columns={columns}
