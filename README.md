@@ -57,7 +57,7 @@ Then open http://localhost:3000.
 
 ## Getting started (any machine)
 
-Prerequisites: **Node.js 22+** and **PostgreSQL 16+**.
+Prerequisites: **Node.js 24.9+** (NestJS 12 is ESM-only) and **PostgreSQL 16+**.
 
 1. Create a database and a role, for example:
    ```sql

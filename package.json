@@ -4,7 +4,7 @@
   "private": true,
   "description": "TakeMeHigh: operations system for one travel agency (single-tenant).",
   "engines": {
-    "node": ">=22",
+    "node": ">=24.9",
     "npm": ">=10"
   },
   "scripts": {
