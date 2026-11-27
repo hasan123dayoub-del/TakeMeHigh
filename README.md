@@ -23,7 +23,8 @@ The full specification, written in Arabic to the IEEE 830 template, is in [`docs
 
 | | |
 |---|---|
-| 🌐 **Public site and dashboard** | [takemehigh-hasan.vercel.app](https://takemehigh-hasan.vercel.app) (dashboard: [/login](https://takemehigh-hasan.vercel.app/login)) |
+| 🌐 **Public site** (for customers) | [takemehigh-hasan.vercel.app](https://takemehigh-hasan.vercel.app) |
+| 🔑 **Dashboard login** (one-click demo accounts on the page) | [takemehigh-hasan.vercel.app/login](https://takemehigh-hasan.vercel.app/login) |
 | ⚙️ **API docs** (Swagger, try requests in the browser) | [takemehigh-api-hasan.vercel.app/api/docs](https://takemehigh-api-hasan.vercel.app/api/docs) |
 
 Demo accounts, password `TakeMeHigh@2026` for all: Admin `admin@takemehigh.local`; branch manager `manager.damascus@takemehigh.local`; employee `employee.damascus@takemehigh.local`; tour guide `guide.damascus@takemehigh.local` (Aleppo has the same accounts).
