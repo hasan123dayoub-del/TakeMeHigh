@@ -1,5 +1,7 @@
 # TakeMeHigh
 
+[![CI](https://github.com/hasan123dayoub-del/TakeMeHigh/actions/workflows/ci.yml/badge.svg)](https://github.com/hasan123dayoub-del/TakeMeHigh/actions/workflows/ci.yml)
+
 **The daily operating system for a travel agency.** It replaces the notebooks, WhatsApp threads, Word files and spreadsheets a travel office runs on today, with one dashboard. That dashboard covers:
 
 - trips, programs and offers
@@ -16,6 +18,28 @@ Each office also gets its own **public page**. There, visitors browse ready trip
 TakeMeHigh is sold as **one installation per agency** (single-tenant), not as a shared SaaS. The office's Admin owns and runs the installation.
 
 The full specification, written in Arabic to the IEEE 830 template, is in [`docs/srs/takemehigh`](docs/srs/takemehigh). It includes the ERD and the role/permission matrix. Requirement ids such as `TRP-05` in the code and tests point to it.
+
+## Live demo
+
+| | |
+|---|---|
+| 🌐 **Public site and dashboard** | [takemehigh-hasan.vercel.app](https://takemehigh-hasan.vercel.app) (dashboard: [/login](https://takemehigh-hasan.vercel.app/login)) |
+| ⚙️ **API docs** (Swagger, try requests in the browser) | [takemehigh-api-hasan.vercel.app/api/docs](https://takemehigh-api-hasan.vercel.app/api/docs) |
+
+Demo accounts, password `TakeMeHigh@2026` for all: Admin `admin@takemehigh.local`; branch manager `manager.damascus@takemehigh.local`; employee `employee.damascus@takemehigh.local`; tour guide `guide.damascus@takemehigh.local` (Aleppo has the same accounts).
+
+Hosting: Vercel (the NestJS API as one serverless function in Frankfurt, next to its Neon PostgreSQL database; the Next.js app as a second project from the same repository).
+
+## My contribution
+
+I built TakeMeHigh on my own, end to end (November 2026): the analysis and the Arabic SRS, the database, the API, the dashboard, the public site, the tests and the deployment.
+
+- **API:** 165 REST endpoints in NestJS 12 + TypeScript, over 45 Prisma models on PostgreSQL, with Swagger docs. JWT with rotating refresh tokens, 4 roles with an editable permission catalogue, and data scoped per branch.
+- **Data integrity:** money as `NUMERIC(14,2)` with decimal.js, database CHECK constraints and triggers (payments cannot be edited or deleted, gap-free receipt numbers), and seat booking that never oversells. Measured in an end-to-end test: 12 simultaneous confirmations on 5 seats give exactly 5 confirmed and 7 on the waiting list.
+- **Dashboard and public site:** 44 pages in Next.js 16 and React 19, Arabic right-to-left first with English, statistics with Recharts, Excel and PDF exports.
+- **Integrations:** one adapter per supplier platform, with scheduled sync, back-off after failures and encrypted credentials (AES-256-GCM).
+- **Quality:** 21 unit tests and 41 end-to-end tests against a real PostgreSQL in GitHub Actions, plus lint, type-check and a web build on every push.
+- **Deployment:** Vercel and Neon. NestJS 12 ships only ES modules, which Vercel's function runtime cannot load from CommonJS, so the API is bundled into one CommonJS file with esbuild. Uploads are kept in PostgreSQL on Vercel (`FILE_STORAGE=database`), because serverless functions have no lasting disk.
 
 ## What it does
 
