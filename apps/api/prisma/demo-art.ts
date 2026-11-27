@@ -164,19 +164,27 @@ function svg(theme: Theme, seed: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${parts.join('')}</svg>`;
 }
 
-/** Writes uploads/public/demo/<name>.webp and returns its public URL. */
+/**
+ * Writes uploads/public/demo/<name>.webp and returns its public URL.
+ * With `store` (FILE_STORAGE=database) the image goes there instead of the disk.
+ */
 export async function demoImage(
   uploadRoot: string,
   apiBase: string,
   name: string,
   theme: Theme,
   seed: number,
+  store?: (key: string, data: Buffer) => Promise<unknown>,
 ) {
-  const dir = join(uploadRoot, 'public', 'demo');
-  mkdirSync(dir, { recursive: true });
   const buf = await sharp(Buffer.from(svg(theme, seed)))
     .webp({ quality: 84 })
     .toBuffer();
-  writeFileSync(join(dir, `${name}.webp`), buf);
+  if (store) {
+    await store(`public/demo/${name}.webp`, buf);
+  } else {
+    const dir = join(uploadRoot, 'public', 'demo');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${name}.webp`), buf);
+  }
   return `${apiBase}/uploads/demo/${name}.webp`;
 }

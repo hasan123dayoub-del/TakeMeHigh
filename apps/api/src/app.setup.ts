@@ -4,7 +4,11 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { mkdirSync } from 'fs';
-import { PUBLIC_DIR } from './uploads/uploads.module';
+import {
+  PUBLIC_DIR,
+  StorageService,
+  filesInDatabase,
+} from './uploads/uploads.module';
 
 /** Shared by main.ts and the e2e tests so tests exercise the exact production pipeline. */
 export function configureApp(app: INestApplication, { swagger = true } = {}) {
@@ -19,13 +23,49 @@ export function configureApp(app: INestApplication, { swagger = true } = {}) {
     credentials: true,
     exposedHeaders: ['Content-Disposition'],
   });
-  mkdirSync(PUBLIC_DIR, { recursive: true });
-  (app as NestExpressApplication).useStaticAssets(PUBLIC_DIR, {
-    prefix: '/uploads/',
-    maxAge: '30d',
-    index: false,
-    dotfiles: 'deny',
-  });
+  if (filesInDatabase()) {
+    // Public images come from the stored_files table (serverless hosting has no lasting disk)
+    const storage = app.get(StorageService);
+    app.use(
+      '/uploads',
+      (
+        req: { method: string; path: string },
+        res: {
+          status(code: number): { end(): void };
+          set(headers: Record<string, string>): { send(body: Buffer): void };
+        },
+        next: (err?: unknown) => void,
+      ) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        let key: string;
+        try {
+          key = `public${decodeURIComponent(req.path)}`;
+        } catch {
+          return res.status(400).end();
+        }
+        storage
+          .readFromDatabase(key)
+          .then((file) => {
+            if (!file) return res.status(404).end();
+            res
+              .set({
+                'Content-Type': file.mime,
+                'Cache-Control': 'public, max-age=2592000, immutable',
+              })
+              .send(file.data);
+          })
+          .catch(() => res.status(404).end());
+      },
+    );
+  } else {
+    mkdirSync(PUBLIC_DIR, { recursive: true });
+    (app as NestExpressApplication).useStaticAssets(PUBLIC_DIR, {
+      prefix: '/uploads/',
+      maxAge: '30d',
+      index: false,
+      dotfiles: 'deny',
+    });
+  }
   (app as NestExpressApplication).set('trust proxy', 'loopback');
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
