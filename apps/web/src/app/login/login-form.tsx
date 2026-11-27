@@ -33,6 +33,12 @@ const m = defineMessages({
     welcome: 'أهلاً {name}',
     signedInTo: '{role} · {branch}',
     allBranches: 'كل الفروع',
+    demoTitle: 'حسابات تجريبية',
+    demoHint: 'كلمة المرور لكل الحسابات: {password} · البيانات تعود لحالتها الأصلية كل ليلة',
+    demoAdmin: 'المدير',
+    demoManager: 'مدير فرع',
+    demoEmployee: 'موظف',
+    demoGuide: 'مرشد سياحي',
   },
   en: {
     email: 'Email',
@@ -51,8 +57,24 @@ const m = defineMessages({
     welcome: 'Welcome, {name}',
     signedInTo: '{role} · {branch}',
     allBranches: 'All branches',
+    demoTitle: 'Demo accounts',
+    demoHint: 'Password for every account: {password} · the demo data resets every night',
+    demoAdmin: 'Admin',
+    demoManager: 'Branch manager',
+    demoEmployee: 'Employee',
+    demoGuide: 'Tour guide',
   },
 });
+
+// The public demo (NEXT_PUBLIC_DEMO=true) lists its seeded accounts so visitors can sign in with one click.
+const DEMO = process.env.NEXT_PUBLIC_DEMO === 'true';
+const DEMO_PASSWORD = 'TakeMeHigh@2026';
+const DEMO_ACCOUNTS = [
+  ['demoAdmin', 'admin@takemehigh.local'],
+  ['demoManager', 'manager.damascus@takemehigh.local'],
+  ['demoEmployee', 'employee.damascus@takemehigh.local'],
+  ['demoGuide', 'guide.damascus@takemehigh.local'],
+] as const;
 
 /** Only same-origin dashboard paths are allowed as post-login destinations (no open redirect). */
 function safeNext() {
@@ -81,6 +103,7 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' }, mode: 'onTouched' });
 
@@ -146,6 +169,30 @@ export function LoginForm() {
           {!isSubmitting && <ArrowRight className="rtl-flip" />}
         </Button>
       </form>
+
+      {DEMO && (
+        <div className="mt-6 grid gap-3 rounded-tile border border-dashed border-primary/40 px-4 py-3.5">
+          <p className="text-[14px] font-semibold">{t.demoTitle}</p>
+          <div className="flex flex-wrap gap-2">
+            {DEMO_ACCOUNTS.map(([label, email]) => (
+              <Button
+                key={email}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFormError(null);
+                  setValue('email', email, { shouldValidate: true });
+                  setValue('password', DEMO_PASSWORD, { shouldValidate: true });
+                }}
+              >
+                {t[label]}
+              </Button>
+            ))}
+          </div>
+          <p className="text-[12.5px] text-subtle">{fmt(t.demoHint, { password: DEMO_PASSWORD })}</p>
+        </div>
+      )}
     </div>
   );
 }
