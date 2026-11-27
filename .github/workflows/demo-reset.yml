@@ -1,0 +1,29 @@
+# Rebuilds the public demo database every night (and on demand), so visitors always find clean data.
+# Secret DEMO_DATABASE_URL: the direct (non-pooled) Neon connection string of the live demo.
+name: Reset live demo
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # 03:00 in Syria
+  workflow_dispatch:
+
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+      FILE_STORAGE: database
+      API_PUBLIC_URL: https://takemehigh-api-hasan.vercel.app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:reset
+        working-directory: apps/api

@@ -26,6 +26,7 @@ import { writeFile } from 'fs/promises';
 import { join, resolve } from 'path';
 import sharp from 'sharp';
 import { Public, RequireAnyPermission } from '../common/decorators';
+import { PrismaService } from '../prisma/prisma.service';
 
 /** What multer hands over for one uploaded file (memory storage). */
 export interface UploadedBlob {
@@ -41,6 +42,23 @@ export const UPLOAD_ROOT = resolve(
 );
 export const PUBLIC_DIR = join(UPLOAD_ROOT, 'public');
 const PRIVATE_DIR = join(UPLOAD_ROOT, 'private');
+
+/**
+ * Where files are kept: on disk (default) or in the stored_files table (FILE_STORAGE=database).
+ * Serverless hosting such as Vercel has no lasting disk, so the live demo uses the database.
+ */
+export const filesInDatabase = () => process.env.FILE_STORAGE === 'database';
+
+/** Rejects keys that try to leave their folder (e.g. "../"). */
+export function safeKey(key: string) {
+  const parts = key.split('/');
+  if (
+    !key ||
+    parts.some((p) => !p || p === '.' || p === '..' || p.includes('\\'))
+  )
+    throw new NotFoundException();
+  return key;
+}
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // CMS-05, CUS-05
 
@@ -75,6 +93,31 @@ const signingKey = () => `takemehigh:files:${process.env.JWT_SECRET}`;
 
 @Injectable()
 export class StorageService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** Saves a file under a key such as "public/images/2026-11/<uuid>.webp". */
+  private async put(key: string, mime: string, data: Buffer) {
+    if (filesInDatabase()) {
+      await this.prisma.storedFile.upsert({
+        where: { key },
+        create: { key, mime, data: new Uint8Array(data) },
+        update: { mime, data: new Uint8Array(data) },
+      });
+      return;
+    }
+    const full = join(UPLOAD_ROOT, ...key.split('/'));
+    mkdirSync(join(full, '..'), { recursive: true });
+    await writeFile(full, data);
+  }
+
+  /** A stored file from the database (FILE_STORAGE=database), or null. */
+  async readFromDatabase(key: string) {
+    const row = await this.prisma.storedFile.findUnique({
+      where: { key: safeKey(key) },
+    });
+    return row ? { mime: row.mime, data: Buffer.from(row.data) } : null;
+  }
+
   /** CMS-05: JPEG/PNG/WebP ≤ 5 MB, resized to ≤ 1920 px and stored as WebP. Returns the public URL. */
   async saveImage(
     file: UploadedBlob | undefined,
@@ -89,8 +132,6 @@ export class StorageService {
         'Only JPEG, PNG or WebP images are accepted',
       );
     const month = new Date().toISOString().slice(0, 7);
-    const dir = join(PUBLIC_DIR, folder, month);
-    mkdirSync(dir, { recursive: true });
     const name = `${randomUUID()}.webp`;
     const out = await sharp(file.buffer)
       .rotate()
@@ -102,7 +143,7 @@ export class StorageService {
       })
       .webp({ quality: 82 })
       .toBuffer({ resolveWithObject: true });
-    await writeFile(join(dir, name), out.data);
+    await this.put(`public/${folder}/${month}/${name}`, 'image/webp', out.data);
     return {
       url: `${apiBase()}/uploads/${folder}/${month}/${name}`,
       width: out.info.width,
@@ -128,14 +169,9 @@ export class StorageService {
       'image/webp': 'webp',
       'application/pdf': 'pdf',
     }[mime];
-    const rel = join(
-      'documents',
-      new Date().toISOString().slice(0, 7),
-      `${randomUUID()}.${ext}`,
-    );
-    mkdirSync(join(PRIVATE_DIR, rel, '..'), { recursive: true });
-    await writeFile(join(PRIVATE_DIR, rel), file.buffer);
-    return { path: rel.replace(/\\/g, '/'), mime };
+    const rel = `documents/${new Date().toISOString().slice(0, 7)}/${randomUUID()}.${ext}`;
+    await this.put(`private/${rel}`, mime, file.buffer);
+    return { path: rel, mime };
   }
 
   /** A link valid for 5 minutes (CUS-05: signed short-lived link). */
@@ -153,7 +189,7 @@ export class StorageService {
     };
   }
 
-  openSigned(token: string) {
+  async openSigned(token: string) {
     const [payload, sig] = token.split('.');
     if (!payload || !sig) throw new NotFoundException();
     const expected = createHmac('sha256', signingKey())
@@ -167,6 +203,14 @@ export class StorageService {
     ) as { p: string; m: string; e: number };
     if (e < Date.now() / 1000)
       throw new ForbiddenException('This link has expired');
+    if (filesInDatabase()) {
+      const stored = await this.readFromDatabase(`private/${p}`);
+      if (!stored) throw new NotFoundException();
+      return new StreamableFile(stored.data, {
+        type: m,
+        disposition: 'inline',
+      });
+    }
     const full = resolve(PRIVATE_DIR, p);
     if (!full.startsWith(PRIVATE_DIR) || !existsSync(full))
       throw new NotFoundException();

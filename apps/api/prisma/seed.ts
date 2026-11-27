@@ -292,7 +292,22 @@ async function main() {
     ['achv4', 'island', 14],
     ['coast', 'island', 15],
   ] as [string, Theme, number][])
-    images[name] = await demoImage(UPLOAD_ROOT, API_BASE, name, theme, s);
+    images[name] = await demoImage(
+      UPLOAD_ROOT,
+      API_BASE,
+      name,
+      theme,
+      s,
+      // FILE_STORAGE=database (the live demo on Vercel): images live in the stored_files table
+      process.env.FILE_STORAGE === 'database'
+        ? (key, data) =>
+            prisma.storedFile.upsert({
+              where: { key },
+              create: { key, mime: 'image/webp', data: new Uint8Array(data) },
+              update: { data: new Uint8Array(data) },
+            })
+        : undefined,
+    );
 
   await prisma.siteSetting.create({
     data: {

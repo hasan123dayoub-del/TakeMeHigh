@@ -1228,3 +1228,16 @@ model AuditLog {
   @@index([userId, createdAt])
   @@map("audit_logs")
 }
+
+// ------------------------------------------------------------------ file storage
+
+/// Uploaded files when FILE_STORAGE=database: serverless hosting (Vercel) has no lasting disk.
+/// The key mirrors the disk layout: public/<folder>/<month>/<uuid>.webp or private/documents/<month>/<uuid>.<ext>
+model StoredFile {
+  key       String   @id @db.VarChar(255)
+  mime      String   @db.VarChar(100)
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("stored_files")
+}
