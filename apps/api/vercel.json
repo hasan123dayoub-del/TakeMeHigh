@@ -2,13 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd ../.. && npm ci --include=dev",
-  "buildCommand": "npm run build && DATABASE_URL=$DIRECT_DATABASE_URL npx prisma migrate deploy && DATABASE_URL=$DIRECT_DATABASE_URL npx prisma db seed && mkdir -p public && printf 'User-agent: *\nDisallow: /\n' > public/robots.txt",
+  "buildCommand": "npm run build && node scripts/bundle-serverless.mjs && DATABASE_URL=$DIRECT_DATABASE_URL npx prisma migrate deploy && DATABASE_URL=$DIRECT_DATABASE_URL npx prisma db seed && mkdir -p public && printf 'User-agent: *\nDisallow: /\n' > public/robots.txt",
   "outputDirectory": "public",
   "regions": ["fra1"],
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": "{dist/**,../../node_modules/swagger-ui-dist/**}"
+      "includeFiles": "../../node_modules/swagger-ui-dist/**"
     }
   },
   "crons": [{ "path": "/api/cron/nightly", "schedule": "0 1 * * *" }],
